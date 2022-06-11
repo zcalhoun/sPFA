@@ -140,9 +140,6 @@ def main():
     overall_timer = Timer()
 
     # Set up logging
-    fp = open(os.path.join(args.results_path, "output.log"), "w")
-    fp.close()
-
     logging.basicConfig(
         filename=os.path.join(args.results_path, "output.log"),
         filemode="w",

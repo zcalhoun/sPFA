@@ -371,9 +371,7 @@ def pretrain_nmf(model, X_train, init, tol, max_iter):
 
     # Record the number of iterations
     logging.info(
-        "NMF took {} iterations to converge with reconstruction error {}.".format(
-            nmf.n_iter_, nmf.reconstruction_err_
-        )
+        f"NMF took {nmf.n_iter_} iterations to converge with reconstruction error {nmf.reconstruction_err_:.2f}."
     )
 
     # Calculate correlation then order by highest correlation

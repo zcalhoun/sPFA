@@ -99,6 +99,7 @@ class DataHandler:
             self.count_vectorizer = joblib.load(
                 os.path.join(self.storage_path, "count_vectorizer.joblib")
             )
+            logging.info("Pregenerated files found.")
         else:
             self.train_data = None
             self.test_data = None
@@ -123,7 +124,7 @@ class DataHandler:
         # Else, create the training data based on the count vectorizer
 
         cities = "|".join(self.train_cities)
-        logging.info("City %s" % cities)
+        logging.info(f"Train cities: {cities}")
         train_files = list(filter(lambda x: re.search(cities, x), self.files))
 
         # Load all of the training data
@@ -149,10 +150,11 @@ class DataHandler:
 
         logging.info("Building test dataset.")
         cities = "|".join(self.test_cities)
+        logging.info(f"Test cities: {cities}")
         test_files = list(filter(lambda x: re.search(cities, x), self.files))
 
         # Load all of the test data
-        test_data_json, test_tweets = load_data(self.data_dir, test_files)
+        test_data_json, _ = load_data(self.data_dir, test_files)
 
         return self._count_vectorize_and_save(test_data_json, "test_data.joblib")
 
@@ -175,7 +177,9 @@ class DataHandler:
                 sample_rate = int(
                     tweets.shape[0] / self.tweet_agg_num * self.tweet_sample_count
                 )
-
+            logging.debug(
+                f"Sampling {day_city['filename']} with sample rate {sample_rate} tweets."
+            )
             aqi = day_city["AQI"]
             generator = np.random.default_rng(seed=42)
 
@@ -185,7 +189,7 @@ class DataHandler:
                     replace = True
                 else:
                     replace = False
-                sample = generator.choice(tweets, self.tweet_agg_num, replace=False)
+                sample = generator.choice(tweets, self.tweet_agg_num, replace=replace)
 
                 output_file.append({"aqi": aqi, "tweets": sample.sum(axis=0)})
 
@@ -212,7 +216,7 @@ class TweetDataset(Dataset):
 
 
 class AverageMeter:
-    """This function track tracks losses of the model.
+    """This function tracks losses of the model.
     Code taken from class AverageMeter()
         https://github.com/facebookresearch/swav/blob/main/src/utils.py
     """
@@ -279,6 +283,8 @@ def load_data(data_dir, files):
     for file in files:
         with open(os.path.join(data_dir, file)) as f:
             data = json.load(f)
+            # Collect city and date for debugging
+            data["filename"] = file
             json_data.append(data)
             tweets.append(data["tweets"])
     return json_data, tweets

@@ -139,6 +139,7 @@ def main():
     # Set up timer to track how long model runs
     overall_timer = Timer()
 
+    os.makedirs(args.results_path)
     # Set up logging
     logging.basicConfig(
         filename=os.path.join(args.results_path, "output.log"),

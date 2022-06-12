@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --output=./slurm.out
-#SBATCH --error=./slurm.err
+#SBATCH --output=./vol_slurm.out
+#SBATCH --error=./vol_slurm.err
 #SBATCH -p carlsonlab-gpu
 #SBATCH --gres=gpu:1
 #SBATCH --mem=8G

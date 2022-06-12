@@ -203,6 +203,9 @@ def main():
         monitor.log(
             "pretrain", epoch, scores, epoch_timer.minutes_elapsed(),
         )
+        logging.info(
+            f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+        )
 
     # TODO - save the pretrained model
     logging.info("Saving pretrained model...")
@@ -225,6 +228,8 @@ def main():
     )
     logging.info("Beginning training...")
     best_test_loss = float("inf")
+    best_mse_loss = float("inf")
+    best_mse_kld_loss = float("inf")
     for epoch in range(args.epochs):
         logging.info(f"Beginning epoch {epoch}")
         epoch_timer.reset()
@@ -238,13 +243,25 @@ def main():
             "test", epoch, test_score, epoch_timer.minutes_elapsed(), klds.weight,
         )
         # Only consider saving every 10 epochs
-        if epoch % 10 == 0:
+        if (epoch + 1) % 10 == 0:
             if test_score["loss"] < best_test_loss:
                 save_model(model, args.results_path, "best.pt")
-                logging.info("Saving model at epoch {epoch}.")
+                logging.info(f"Saving lowest loss model at epoch {epoch}.")
+            if test_score["mse"] < best_mse_loss:
+                save_model(model, args.results_path, "best_mse.pt")
+                logging.info(f"Saving lowest mse model at epoch {epoch}.")
+            if test_score["mse"] < best_mse_kld_loss and klds.weight == args.end_kld:
+                save_model(model, args.results_path, "best_mse_kld.pt")
+                logging.info(
+                    f"Saving lowest mse model with ending KLD at epoch {epoch}."
+                )
         # Increase the KLD after each epoch
         klds.step()
+        logging.info(
+            f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+        )
 
+    save_model(model, args.results_path, "final.pt")
     # TODO: save the final model.
     logging.info(f"Training complete in {overall_timer.minutes_elapsed():.2f} minutes.")
 

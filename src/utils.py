@@ -129,14 +129,21 @@ class DataHandler:
         train_files = list(filter(lambda x: re.search(cities, x), self.files))
         logging.debug(f"There are {len(train_files)} training files to load.")
         # Load all of the training data
-        train_data_json, train_tweets = load_data(self.data_dir, train_files)
-        logging.debug(f"There are a total of {len(train_tweets)} tweets.")
-        self.count_vectorizer.fit(train_tweets)
+        train_data_json = load_data(self.data_dir, train_files)
+        logging.debug("Data loaded. Now fitting the count vectorizer.")
+        self.count_vectorizer.fit(fit_iterator(train_data_json))
+        logging.debug(
+            f"Count vectorizer fitted with vocab size {len(self.count_vectorizer.vocabulary_)}"
+        )
         # Save the count vectorizer for later use
+
+        logging.debug("Dumping count vectorizer for future use.")
         joblib.dump(
             self.count_vectorizer,
             os.path.join(self.storage_path, "count_vectorizer.joblib"),
         )
+
+        logging.debug("Count vectorizer saved. Now vectorizing the data.")
 
         # Turn the training data into a joblib file
         return self._count_vectorize_and_save(train_data_json, "train_data.joblib")
@@ -151,7 +158,7 @@ class DataHandler:
         test_files = list(filter(lambda x: re.search(cities, x), self.files))
         logging.debug(f"There are {len(test_files)} test files to load.")
         # Load all of the test data
-        test_data_json, _ = load_data(self.data_dir, test_files)
+        test_data_json = load_data(self.data_dir, test_files)
         logging.info("Test data loaded and being count vectorized.")
         return self._count_vectorize_and_save(test_data_json, "test_data.joblib")
 
@@ -276,7 +283,6 @@ def load_data(data_dir, files):
     Loads the data from the files in the directory.
     """
     json_data = []
-    tweets = []
     for file in files:
         logging.debug(f"Opening file {file}")
         with open(os.path.join(data_dir, file)) as f:
@@ -284,7 +290,23 @@ def load_data(data_dir, files):
             # Collect city and date for debugging
             data["filename"] = file
             json_data.append(data)
-            tweets += data["tweets"]
             logging.debug("Data from file appended.")
 
-    return json_data, tweets
+    return json_data
+
+
+def fit_iterator(tweet_json):
+    """This function yields an iterator from a set of day_city tweet objects
+    so that the count vectorizer can run on a larger corpus without loading
+    all of the data into memory."""
+    count = 0
+    for day_city in tweet_json:
+        if count > 0:
+            logging.debug(f"{count} tweets processed.")
+        logging.debug(f"Fitting count vectorizer to file {day_city['filename']}")
+        for tweet in day_city["tweets"]:
+            count += 1
+            yield tweet
+
+    else:
+        logging.debug(f"{count} tweets processed.")

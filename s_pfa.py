@@ -135,12 +135,7 @@ def main():
     """
     global args
     args = parser.parse_args()
-
-    # Set up timer to track how long model runs
-    overall_timer = Timer()
-
     os.makedirs(args.results_path)
-    # Set up logging
     logging.basicConfig(
         filename=os.path.join(args.results_path, "output.log"),
         filemode="w",
@@ -148,6 +143,9 @@ def main():
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
     logging.info(args)
+
+    # Set up timer to track how long model runs
+    overall_timer = Timer()
 
     logging.info("Loading data...")
     step_timer = Timer()

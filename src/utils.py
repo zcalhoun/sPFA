@@ -85,11 +85,12 @@ class DataHandler:
 
         # If the count vectorizer has already been created, load it.
         if not (os.path.exists(self.storage_path)):
-            print("Data path cannot be found")
+            logging.info("Data path cannot be found, creating directory now.")
             os.makedirs(self.storage_path)
 
         # If training data exists and testing data and count vector exists, load them
         if self._data_exists():
+            logging.info(f"Loading data from {self.storage_path}.")
             self.train_data = joblib.load(
                 os.path.join(self.storage_path, "train_data.joblib")
             )
@@ -99,7 +100,7 @@ class DataHandler:
             self.count_vectorizer = joblib.load(
                 os.path.join(self.storage_path, "count_vectorizer.joblib")
             )
-            logging.info("Pregenerated files found.")
+            logging.info("Data loaded.")
         else:
             self.train_data = None
             self.test_data = None
@@ -126,14 +127,10 @@ class DataHandler:
         cities = "|".join(self.train_cities)
         logging.info(f"Train cities: {cities}")
         train_files = list(filter(lambda x: re.search(cities, x), self.files))
-
+        logging.debug(f"There are {len(train_files)} training files to load.")
         # Load all of the training data
         train_data_json, train_tweets = load_data(self.data_dir, train_files)
-
-        # Concatenate the tweets into a single array
-        # This is needed to create the count vectorizer
-        train_tweets = reduce(lambda x, y: x + y, train_tweets)
-
+        logging.debug(f"There are a total of {len(train_tweets)} tweets.")
         self.count_vectorizer.fit(train_tweets)
         # Save the count vectorizer for later use
         joblib.dump(
@@ -152,10 +149,10 @@ class DataHandler:
         cities = "|".join(self.test_cities)
         logging.info(f"Test cities: {cities}")
         test_files = list(filter(lambda x: re.search(cities, x), self.files))
-
+        logging.debug(f"There are {len(test_files)} test files to load.")
         # Load all of the test data
         test_data_json, _ = load_data(self.data_dir, test_files)
-
+        logging.info("Test data loaded and being count vectorized.")
         return self._count_vectorize_and_save(test_data_json, "test_data.joblib")
 
     def get_count_vec(self,):
@@ -178,7 +175,7 @@ class DataHandler:
                     tweets.shape[0] / self.tweet_agg_num * self.tweet_sample_count
                 )
             logging.debug(
-                f"Sampling {day_city['filename']} with sample rate {sample_rate} tweets."
+                f"Sampling {day_city['filename']} with sample rate {sample_rate}."
             )
             aqi = day_city["AQI"]
             generator = np.random.default_rng(seed=42)
@@ -281,10 +278,13 @@ def load_data(data_dir, files):
     json_data = []
     tweets = []
     for file in files:
+        logging.debug(f"Opening file {file}")
         with open(os.path.join(data_dir, file)) as f:
             data = json.load(f)
             # Collect city and date for debugging
             data["filename"] = file
             json_data.append(data)
-            tweets.append(data["tweets"])
+            tweets += data["tweets"]
+            logging.debug("Data from file appended.")
+
     return json_data, tweets

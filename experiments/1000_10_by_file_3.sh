@@ -16,8 +16,10 @@ singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets
 	--train_cities chicago dallas los\ angeles new\ york portland san\ francisco phoenix \
 	--test_cities raleigh seattle orange \
 	--nmf_max_iter 300 \
+	--num_components 100 \
 	--l1_reg 0.1 \
 	--init_kld 0.000001 \
 	--klds_epochs 10 \
+	--epochs 100 \
 	--log_level DEBUG \
-	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp4/
+	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp3/

@@ -4,7 +4,7 @@
 #SBATCH --error=./slurm.err
 #SBATCH -p carlsonlab-gpu
 #SBATCH --gres=gpu:1
-#SBATCH --mem=8G
+#SBATCH --mem=64G
 #SBATCH --account=carlsonlab
 
 singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets.sif python3 s_pfa.py \

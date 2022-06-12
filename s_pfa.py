@@ -115,7 +115,7 @@ parser.add_argument(
     "--klds_epochs", type=int, default=100, help="number of epochs to scale KLD"
 )
 parser.add_argument("--lr", type=float, default=1e-6, help="learning rate")
-parser.add_argument("--optim", type='text', default="adam", help="optimizer")
+parser.add_argument("--optim", type=str, default="adam", help="optimizer")
 ######################
 # Logging args
 ######################

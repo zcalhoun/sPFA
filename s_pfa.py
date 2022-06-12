@@ -83,6 +83,7 @@ parser.add_argument("--l1_reg", type=float, default=0.0, help="l1 regularization
 parser.add_argument(
     "--dropout", type=float, default=0.5, help="dropout on the word weights"
 )
+parser.add_argument("--mse_weight", type=float, default=1.0, help="mse weight")
 
 ######################
 # Pre-Training args
@@ -237,7 +238,9 @@ def main():
     for epoch in range(args.epochs):
         logging.info(f"Beginning epoch {epoch}")
         epoch_timer.reset()
-        train_score = train(model, train_loader, optimizer, klds.weight)
+        train_score = train(
+            model, train_loader, optimizer, klds.weight, args.mse_weight
+        )
         monitor.log(
             "train", epoch, train_score, epoch_timer.minutes_elapsed(), klds.weight,
         )
@@ -309,7 +312,7 @@ def test(model, test_loader, kld_weight):
     return scores
 
 
-def train(model, train_loader, optimizer, kld_weight):
+def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0):
 
     model.train()
     losses = {
@@ -330,7 +333,7 @@ def train(model, train_loader, optimizer, kld_weight):
 
         l1 = model.l1_loss()
 
-        loss = pnll + mse + kld_weight * kld + l1
+        loss = pnll + mse_weight * mse + kld_weight * kld + l1
 
         loss.backward()
         optimizer.step()

@@ -23,4 +23,4 @@ This approach will be more memory intensive, as there will be signifantly more e
 |:------------------|:----:|:--------------:|
 | 1 | [1000_10_by_file_1.sh](1000_10_by_file_1.sh) | [../results/exp1](../results/exp1)|
 | 2 | [1000_10_by_vol_1.sh](1000_10_by_vol_1.sh) | [../results/exp2](../results/exp2)|
-
+| 3 | [1000_10_by_file_2.sh](1000_10_by_file_3.sh) | [../results/exp3](../results/exp3)|

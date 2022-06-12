@@ -115,7 +115,7 @@ parser.add_argument(
     "--klds_epochs", type=int, default=100, help="number of epochs to scale KLD"
 )
 parser.add_argument("--lr", type=float, default=1e-6, help="learning rate")
-
+parser.add_argument("--optim", type='text', default="adam", help="optimizer")
 ######################
 # Logging args
 ######################
@@ -220,8 +220,12 @@ def main():
     test_loader = DataLoader(X_test, batch_size=args.batch_size, shuffle=True)
 
     # Begin training
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
-
+    if args.optim == "adam":
+        optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    else:
+        optimizer = optim.SGD(
+            model.parameters(), lr=args.lr, momentum=0.9, nesterov=True
+        )
     # Begin with the KLD loss small to avoid exploding gradients
     klds = KLDScheduler(
         init_kld=args.init_kld, end_kld=args.end_kld, end_epoch=args.klds_epochs
@@ -247,14 +251,17 @@ def main():
             if test_score["loss"] < best_test_loss:
                 save_model(model, args.results_path, "best.pt")
                 logging.info(f"Saving lowest loss model at epoch {epoch}.")
+                best_test_loss = test_score["loss"]
             if test_score["mse"] < best_mse_loss:
                 save_model(model, args.results_path, "best_mse.pt")
                 logging.info(f"Saving lowest mse model at epoch {epoch}.")
+                best_mse_loss = test_score["mse"]
             if test_score["mse"] < best_mse_kld_loss and klds.weight == args.end_kld:
                 save_model(model, args.results_path, "best_mse_kld.pt")
                 logging.info(
                     f"Saving lowest mse model with ending KLD at epoch {epoch}."
                 )
+                best_mse_kld_loss = test_score["mse"]
         # Increase the KLD after each epoch
         klds.step()
         logging.info(

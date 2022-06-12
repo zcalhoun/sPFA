@@ -143,7 +143,7 @@ def main():
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
     logging.info(args)
-
+    logging.info(f"Cuda available: {torch.cuda.is_available()}")
     # Set up timer to track how long model runs
     overall_timer = Timer()
 

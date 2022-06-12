@@ -2,9 +2,9 @@
 
 #SBATCH --output=./slurm.out
 #SBATCH --error=./slurm.err
-#SBATCH --mem=8G
-#SBATCH --gres=gpu:1
 #SBATCH -p carlsonlab-gpu
+#SBATCH --gres=gpu:1
+#SBATCH --mem=8G
 #SBATCH --account=carlsonlab
 
 singularity exec -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets.sif python3 s_pfa.py \
@@ -15,6 +15,7 @@ singularity exec -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets.sif 
 	--max_df .01 \
 	--train_cities chicago dallas los\ angeles new\ york portland san\ francisco phoenix \
 	--test_cities raleigh seattle orange \
+	--nmf_max_iter 300 \
 	--l1_reg 0.1 \
 	--init_kld 0.000001 \
 	--klds_epochs 100 \

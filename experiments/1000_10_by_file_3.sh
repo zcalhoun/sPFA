@@ -22,4 +22,4 @@ singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets
 	--klds_epochs 10 \
 	--epochs 100 \
 	--log_level DEBUG \
-	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp3/
+	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp4/

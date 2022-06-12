@@ -169,6 +169,8 @@ def main():
         dropout=args.dropout,
     )
 
+    logging.info(f"Model created on {model.device}.")
+
     # Pretrain the model
     logging.info("Running NMF...")
     step_timer.reset()

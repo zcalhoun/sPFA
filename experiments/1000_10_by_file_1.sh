@@ -2,6 +2,10 @@
 
 #SBATCH --output=./slurm.out
 #SBATCH --error=./slurm.err
+#SBATCH --mem=8G
+#SBATCH --gres=gpu:1
+#SBATCH -p carlsonlab-gpu
+#SBATCH --account=carlsonlab
 
 singularity exec -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets.sif python3 s_pfa.py \
 	--lemmatized_path /hpc/group/carlsonlab/zdc6/wildfire/data/lemmatized/ \

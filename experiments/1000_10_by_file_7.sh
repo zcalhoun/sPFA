@@ -22,4 +22,5 @@ singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets
 	--klds_epochs 10 \
 	--mse_weight 1000 \
 	--epochs 400 \
-	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp9/
+	--pretrain_lr 0.00001 \
+	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp10/

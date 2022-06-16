@@ -2,7 +2,7 @@
 
 #SBATCH --output=./slurm24.out
 #SBATCH --error=./slurm24.err
-#SBATCH -p scavenger-gpu
+#SBATCH -p gpu-common
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 

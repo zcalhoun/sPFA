@@ -208,10 +208,6 @@ def main():
             f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
         )
 
-    # TODO - save the pretrained model
-    logging.info("Saving pretrained model...")
-    save_model(model, args.results_path, "pretrain.pt")
-
     logging.info(f"Pretraining complete in {step_timer.minutes_elapsed():.2f} minutes.")
     # Turn the gradient back on prior to training
     model.W_tilde.requires_grad = True
@@ -255,10 +251,6 @@ def main():
                 save_model(model, args.results_path, "best.pt")
                 logging.info(f"Saving lowest loss model at epoch {epoch}.")
                 best_test_loss = test_score["loss"]
-            if test_score["mse"] < best_mse_loss:
-                save_model(model, args.results_path, "best_mse.pt")
-                logging.info(f"Saving lowest mse model at epoch {epoch}.")
-                best_mse_loss = test_score["mse"]
             if test_score["mse"] < best_mse_kld_loss and klds.weight == args.end_kld:
                 save_model(model, args.results_path, "best_mse_kld.pt")
                 logging.info(

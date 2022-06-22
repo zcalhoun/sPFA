@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --output=./slurm.out
-#SBATCH --error=./slurm.err
+#SBATCH --output=./slurm32.out
+#SBATCH --error=./slurm32.err
 #SBATCH -p carlsonlab-gpu
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
@@ -24,4 +24,4 @@ singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets
 	--mse_weight 200 \
 	--epochs 400 \
 	--pretrain_lr 0.00001 \
-	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp25/
+	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp32/

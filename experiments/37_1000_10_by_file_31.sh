@@ -7,7 +7,7 @@
 #SBATCH --mem=64G
 #SBATCH --account=carlsonlab
 
-singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets.sif python3 s_pfa.py \
+singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets.sif python3 main.py \
 	--lemmatized_path /hpc/group/carlsonlab/zdc6/wildfire/data/lemmatized/ \
 	--data_path /hpc/group/carlsonlab/zdc6/sPFA/data/1000_10_by_file/ \
 	--tweet_sample_count 10 \

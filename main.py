@@ -83,6 +83,9 @@ parser.add_argument("--l1_reg", type=float, default=0.0, help="l1 regularization
 parser.add_argument(
     "--dropout", type=float, default=0.5, help="dropout on the word weights"
 )
+parser.add_argument(
+    "--pred_dropout", type=float, default=0.0, help="dropout on the word weights"
+)
 parser.add_argument("--mse_weight", type=float, default=1.0, help="mse weight")
 
 ######################
@@ -168,6 +171,7 @@ def main():
         prior_logvar=args.prior_logvar,
         l1_reg=args.l1_reg,
         dropout=args.dropout,
+        pred_dropout=args.pred_dropout,
     )
 
     logging.info(f"Model created on {model.device}.")

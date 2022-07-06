@@ -20,6 +20,7 @@ class sPFA(nn.Module):
         prior_logvar=0,
         l1_reg=0.0,
         dropout=0.5,
+        pred_dropout=0.5,
         device="auto",
     ):
         """
@@ -48,6 +49,7 @@ class sPFA(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
         #         self.lgamma = torch.lgamma
+        self.pred_dropout = nn.Dropout(pred_dropout)
 
         self.beta = nn.Linear(num_components, 1, bias=True)
 
@@ -80,8 +82,10 @@ class sPFA(nn.Module):
         s = self.softplus(s_tilde)
         W = F.relu(self.W_tilde)
 
-        # Predict y using the first 5 nodes from s
-        y_hat = self.beta(s)
+        # Predict using dropout on the nodes coming
+        # out of beta. This should prevent overfitting
+        s_d = self.pred_dropout(s)
+        y_hat = self.beta(s_d)
 
         return s, W, mu, logvar, y_hat
 

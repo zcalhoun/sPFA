@@ -85,11 +85,12 @@ class DataHandler:
 
         # If the count vectorizer has already been created, load it.
         if not (os.path.exists(self.storage_path)):
-            print("Data path cannot be found")
+            logging.info("Data path cannot be found, creating directory now.")
             os.makedirs(self.storage_path)
 
         # If training data exists and testing data and count vector exists, load them
         if self._data_exists():
+            logging.info(f"Loading data from {self.storage_path}.")
             self.train_data = joblib.load(
                 os.path.join(self.storage_path, "train_data.joblib")
             )
@@ -99,6 +100,7 @@ class DataHandler:
             self.count_vectorizer = joblib.load(
                 os.path.join(self.storage_path, "count_vectorizer.joblib")
             )
+            logging.info("Data loaded.")
         else:
             self.train_data = None
             self.test_data = None
@@ -123,22 +125,25 @@ class DataHandler:
         # Else, create the training data based on the count vectorizer
 
         cities = "|".join(self.train_cities)
-        logging.info("City %s" % cities)
+        logging.info(f"Train cities: {cities}")
         train_files = list(filter(lambda x: re.search(cities, x), self.files))
-
+        logging.debug(f"There are {len(train_files)} training files to load.")
         # Load all of the training data
-        train_data_json, train_tweets = load_data(self.data_dir, train_files)
-
-        # Concatenate the tweets into a single array
-        # This is needed to create the count vectorizer
-        train_tweets = reduce(lambda x, y: x + y, train_tweets)
-
-        self.count_vectorizer.fit(train_tweets)
+        train_data_json = load_data(self.data_dir, train_files)
+        logging.debug("Data loaded. Now fitting the count vectorizer.")
+        self.count_vectorizer.fit(fit_iterator(train_data_json))
+        logging.debug(
+            f"Count vectorizer fitted with vocab size {len(self.count_vectorizer.vocabulary_)}"
+        )
         # Save the count vectorizer for later use
+
+        logging.debug("Dumping count vectorizer for future use.")
         joblib.dump(
             self.count_vectorizer,
             os.path.join(self.storage_path, "count_vectorizer.joblib"),
         )
+
+        logging.debug("Count vectorizer saved. Now vectorizing the data.")
 
         # Turn the training data into a joblib file
         return self._count_vectorize_and_save(train_data_json, "train_data.joblib")
@@ -149,11 +154,12 @@ class DataHandler:
 
         logging.info("Building test dataset.")
         cities = "|".join(self.test_cities)
+        logging.info(f"Test cities: {cities}")
         test_files = list(filter(lambda x: re.search(cities, x), self.files))
-
+        logging.debug(f"There are {len(test_files)} test files to load.")
         # Load all of the test data
-        test_data_json, test_tweets = load_data(self.data_dir, test_files)
-
+        test_data_json = load_data(self.data_dir, test_files)
+        logging.info("Test data loaded and being count vectorized.")
         return self._count_vectorize_and_save(test_data_json, "test_data.joblib")
 
     def get_count_vec(self,):
@@ -175,7 +181,9 @@ class DataHandler:
                 sample_rate = int(
                     tweets.shape[0] / self.tweet_agg_num * self.tweet_sample_count
                 )
-
+            logging.debug(
+                f"Sampling {day_city['filename']} with sample rate {sample_rate}."
+            )
             aqi = day_city["AQI"]
             generator = np.random.default_rng(seed=42)
 
@@ -185,7 +193,7 @@ class DataHandler:
                     replace = True
                 else:
                     replace = False
-                sample = generator.choice(tweets, self.tweet_agg_num, replace=False)
+                sample = generator.choice(tweets, self.tweet_agg_num, replace=replace)
 
                 output_file.append({"aqi": aqi, "tweets": sample.sum(axis=0)})
 
@@ -212,7 +220,7 @@ class TweetDataset(Dataset):
 
 
 class AverageMeter:
-    """This function track tracks losses of the model.
+    """This function tracks losses of the model.
     Code taken from class AverageMeter()
         https://github.com/facebookresearch/swav/blob/main/src/utils.py
     """
@@ -275,10 +283,30 @@ def load_data(data_dir, files):
     Loads the data from the files in the directory.
     """
     json_data = []
-    tweets = []
     for file in files:
+        logging.debug(f"Opening file {file}")
         with open(os.path.join(data_dir, file)) as f:
             data = json.load(f)
+            # Collect city and date for debugging
+            data["filename"] = file
             json_data.append(data)
-            tweets.append(data["tweets"])
-    return json_data, tweets
+            logging.debug("Data from file appended.")
+
+    return json_data
+
+
+def fit_iterator(tweet_json):
+    """This function yields an iterator from a set of day_city tweet objects
+    so that the count vectorizer can run on a larger corpus without loading
+    all of the data into memory."""
+    count = 0
+    for day_city in tweet_json:
+        if count > 0:
+            logging.debug(f"{count} tweets processed.")
+        logging.debug(f"Fitting count vectorizer to file {day_city['filename']}")
+        for tweet in day_city["tweets"]:
+            count += 1
+            yield tweet
+
+    else:
+        logging.debug(f"{count} tweets processed.")

@@ -83,6 +83,7 @@ parser.add_argument("--l1_reg", type=float, default=0.0, help="l1 regularization
 parser.add_argument(
     "--dropout", type=float, default=0.5, help="dropout on the word weights"
 )
+parser.add_argument("--mse_weight", type=float, default=1.0, help="mse weight")
 
 ######################
 # Pre-Training args
@@ -115,7 +116,7 @@ parser.add_argument(
     "--klds_epochs", type=int, default=100, help="number of epochs to scale KLD"
 )
 parser.add_argument("--lr", type=float, default=1e-6, help="learning rate")
-
+parser.add_argument("--optim", type=str, default="adam", help="optimizer")
 ######################
 # Logging args
 ######################
@@ -135,14 +136,7 @@ def main():
     """
     global args
     args = parser.parse_args()
-
-    # Set up timer to track how long model runs
-    overall_timer = Timer()
-
-    # Set up logging
-    fp = open(os.path.join(args.results_path, "output.log"), "w")
-    fp.close()
-
+    os.makedirs(args.results_path)
     logging.basicConfig(
         filename=os.path.join(args.results_path, "output.log"),
         filemode="w",
@@ -150,6 +144,9 @@ def main():
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
     logging.info(args)
+    logging.info(f"Cuda available: {torch.cuda.is_available()}")
+    # Set up timer to track how long model runs
+    overall_timer = Timer()
 
     logging.info("Loading data...")
     step_timer = Timer()
@@ -172,6 +169,8 @@ def main():
         l1_reg=args.l1_reg,
         dropout=args.dropout,
     )
+
+    logging.info(f"Model created on {model.device}.")
 
     # Pretrain the model
     logging.info("Running NMF...")
@@ -205,10 +204,9 @@ def main():
         monitor.log(
             "pretrain", epoch, scores, epoch_timer.minutes_elapsed(),
         )
-
-    # TODO - save the pretrained model
-    logging.info("Saving pretrained model...")
-    save_model(model, args.results_path, "pretrain.pt")
+        logging.info(
+            f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+        )
 
     logging.info(f"Pretraining complete in {step_timer.minutes_elapsed():.2f} minutes.")
     # Turn the gradient back on prior to training
@@ -219,18 +217,26 @@ def main():
     test_loader = DataLoader(X_test, batch_size=args.batch_size, shuffle=True)
 
     # Begin training
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
-
+    if args.optim == "adam":
+        optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    else:
+        optimizer = optim.SGD(
+            model.parameters(), lr=args.lr, momentum=0.9, nesterov=True
+        )
     # Begin with the KLD loss small to avoid exploding gradients
     klds = KLDScheduler(
         init_kld=args.init_kld, end_kld=args.end_kld, end_epoch=args.klds_epochs
     )
     logging.info("Beginning training...")
     best_test_loss = float("inf")
+    best_mse_loss = float("inf")
+    best_mse_kld_loss = float("inf")
     for epoch in range(args.epochs):
         logging.info(f"Beginning epoch {epoch}")
         epoch_timer.reset()
-        train_score = train(model, train_loader, optimizer, klds.weight)
+        train_score = train(
+            model, train_loader, optimizer, klds.weight, args.mse_weight
+        )
         monitor.log(
             "train", epoch, train_score, epoch_timer.minutes_elapsed(), klds.weight,
         )
@@ -240,13 +246,24 @@ def main():
             "test", epoch, test_score, epoch_timer.minutes_elapsed(), klds.weight,
         )
         # Only consider saving every 10 epochs
-        if epoch % 10 == 0:
+        if (epoch + 1) % 10 == 0:
             if test_score["loss"] < best_test_loss:
                 save_model(model, args.results_path, "best.pt")
-                logging.info("Saving model at epoch {epoch}.")
+                logging.info(f"Saving lowest loss model at epoch {epoch}.")
+                best_test_loss = test_score["loss"]
+            if test_score["mse"] < best_mse_kld_loss and klds.weight == args.end_kld:
+                save_model(model, args.results_path, "best_mse_kld.pt")
+                logging.info(
+                    f"Saving lowest mse model with ending KLD at epoch {epoch}."
+                )
+                best_mse_kld_loss = test_score["mse"]
         # Increase the KLD after each epoch
         klds.step()
+        logging.info(
+            f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+        )
 
+    save_model(model, args.results_path, "final.pt")
     # TODO: save the final model.
     logging.info(f"Training complete in {overall_timer.minutes_elapsed():.2f} minutes.")
 
@@ -287,7 +304,7 @@ def test(model, test_loader, kld_weight):
     return scores
 
 
-def train(model, train_loader, optimizer, kld_weight):
+def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0):
 
     model.train()
     losses = {
@@ -308,7 +325,7 @@ def train(model, train_loader, optimizer, kld_weight):
 
         l1 = model.l1_loss()
 
-        loss = pnll + mse + kld_weight * kld + l1
+        loss = pnll + mse_weight * mse + kld_weight * kld + l1
 
         loss.backward()
         optimizer.step()
@@ -374,9 +391,7 @@ def pretrain_nmf(model, X_train, init, tol, max_iter):
 
     # Record the number of iterations
     logging.info(
-        "NMF took {} iterations to converge with reconstruction error {}.".format(
-            nmf.n_iter_, nmf.reconstruction_err_
-        )
+        f"NMF took {nmf.n_iter_} iterations to converge with reconstruction error {nmf.reconstruction_err_:.2f}."
     )
 
     # Calculate correlation then order by highest correlation

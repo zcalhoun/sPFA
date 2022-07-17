@@ -1,5 +1,4 @@
 results/*
 data/*
 *__pycache__
-experiments/*
 slurm*

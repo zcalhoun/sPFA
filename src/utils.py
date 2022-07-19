@@ -240,7 +240,7 @@ class LDSWeights:
         idx = key // 5
         return self.weights[idx]
 
-    def _get_lds_kernel_window(kernel, ks, sigma):
+    def _get_lds_kernel_window(self, kernel, ks, sigma):
         assert kernel in ["gaussian", "triang", "laplace"]
         half_ks = (ks - 1) // 2
         if kernel == "gaussian":

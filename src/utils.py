@@ -231,7 +231,7 @@ class LDSWeights:
 
         # Turn the effective label distribution into the probability
         w = [np.float32(1 / e) for e in eff_label_dist]
-        self.weights = w / np.sum(w)
+        return w / np.sum(w)
 
     def __len__(self):
         return len(self.weights)
@@ -249,12 +249,9 @@ class LDSWeights:
                 gaussian_filter1d(base_kernel, sigma=sigma)
             )
         elif kernel == "triang":
-            kernel_window = triang(ks)
+            raise NotImplementedError("Triangular kernel not implemented.")
         else:
-            laplace = lambda x: np.exp(-abs(x) / sigma) / (2.0 * sigma)
-            kernel_window = list(map(laplace, np.arange(-half_ks, half_ks + 1))) / max(
-                map(laplace, np.arange(-half_ks, half_ks + 1))
-            )
+            raise NotImplementedError("Laplacian kernel not implemented.")
 
         return kernel_window
 
@@ -273,7 +270,7 @@ class TweetDataset(Dataset):
 
         return (
             torch.from_numpy(tweets).float().requires_grad_(False),
-            torch.tensor(np.log10(aqi)),
+            torch.tensor(aqi),
         )
 
 

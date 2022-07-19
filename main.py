@@ -174,7 +174,7 @@ def main():
     w_lds = [1] * 500
     if args.weighted:
         logging.info("Creating weighted dataset...")
-        w_lds = LDSWeights(X_train)
+        w_lds = LDSWeights(train_data)
 
     # Set up the model
     vocab_size = len(count_vec.vocabulary_)
@@ -345,7 +345,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
         l1 = model.l1_loss()
 
         # Proper weighting of examples.
-        w = w_lds[y]
+        w = w_lds[int(y.item())]
 
         loss = pnll + mse_weight * w * mse + kld_weight * kld + l1
 

@@ -15,6 +15,11 @@ from sklearn.feature_extraction.text import CountVectorizer
 import torch
 from torch.utils.data import Dataset
 
+# Needed for creating empirical weights
+from collections import Counter
+from scipy.ndimage import convolve1d
+from scipy.ndimage import gaussian_filter1d
+
 
 class PerformanceMonitor:
     def __init__(self, target_dir):
@@ -199,6 +204,59 @@ class DataHandler:
 
         joblib.dump(output_file, os.path.join(self.storage_path, filename))
         return output_file
+
+
+class LDSWeights:
+    def __init__(self, data):
+        self.weights = self._generate_weights(data)
+
+    def _generate_weights(self, data):
+
+        # Reduce to bins of size 5.
+        all_aqi = [day_city["aqi"] // 5 for day_city in data]
+
+        # Generate the number of bins:
+        Nb = max(all_aqi) + 1
+        num_samples_of_bins = dict(Counter(all_aqi))
+        emp_label_dist = [num_samples_of_bins.get(i, 0) for i in range(Nb)]
+
+        # lds_kernel_window: [ks,], here for example, we use gaussian, ks=5, sigma=2
+        lds_kernel_window = self._get_lds_kernel_window(
+            kernel="gaussian", ks=20, sigma=5
+        )
+        # calculate effective label distribution: [Nb,]
+        eff_label_dist = convolve1d(
+            np.array(emp_label_dist), weights=lds_kernel_window, mode="constant"
+        )
+
+        # Turn the effective label distribution into the probability
+        w = [np.float32(1 / e) for e in eff_label_dist]
+        self.weights = w / np.sum(w)
+
+    def __len__(self):
+        return len(self.weights)
+
+    def __getitem__(self, key):
+        idx = key // 5
+        return self.weights[idx]
+
+    def _get_lds_kernel_window(kernel, ks, sigma):
+        assert kernel in ["gaussian", "triang", "laplace"]
+        half_ks = (ks - 1) // 2
+        if kernel == "gaussian":
+            base_kernel = [0.0] * half_ks + [1.0] + [0.0] * half_ks
+            kernel_window = gaussian_filter1d(base_kernel, sigma=sigma) / max(
+                gaussian_filter1d(base_kernel, sigma=sigma)
+            )
+        elif kernel == "triang":
+            kernel_window = triang(ks)
+        else:
+            laplace = lambda x: np.exp(-abs(x) / sigma) / (2.0 * sigma)
+            kernel_window = list(map(laplace, np.arange(-half_ks, half_ks + 1))) / max(
+                map(laplace, np.arange(-half_ks, half_ks + 1))
+            )
+
+        return kernel_window
 
 
 class TweetDataset(Dataset):

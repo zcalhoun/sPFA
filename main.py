@@ -24,6 +24,7 @@ from src.utils import (
     KLDScheduler,
     Timer,
     PerformanceMonitor,
+    LDSWeights,
 )
 
 from sPFA import sPFA
@@ -69,6 +70,12 @@ parser.add_argument(
 )
 parser.add_argument(
     "--test_cities", nargs="+", help="Cities to include in the test set", required=True
+)
+parser.add_argument(
+    "--weighted",
+    type=bool,
+    default=False,
+    help="Whether to weight the MSE based on the less sample portion.",
 )
 
 ######################
@@ -161,6 +168,14 @@ def main():
     X_train = TweetDataset(train_data)
     X_test = TweetDataset(test_data)
 
+    # Create an empty array with the length much greater than max AQI
+    # This is used in the case where we don't have weights used, in whih
+    # case the weights are all 1.
+    w_lds = [1] * 500
+    if args.weighted:
+        logging.info("Creating weighted dataset...")
+        w_lds = LDSWeights(X_train)
+
     # Set up the model
     vocab_size = len(count_vec.vocabulary_)
     logging.info("Setting up model...")
@@ -239,7 +254,7 @@ def main():
         logging.info(f"Beginning epoch {epoch}")
         epoch_timer.reset()
         train_score = train(
-            model, train_loader, optimizer, klds.weight, args.mse_weight
+            model, train_loader, optimizer, klds.weight, args.mse_weight, w_lds
         )
         monitor.log(
             "train", epoch, train_score, epoch_timer.minutes_elapsed(), klds.weight,
@@ -308,7 +323,7 @@ def test(model, test_loader, kld_weight):
     return scores
 
 
-def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0):
+def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0):
 
     model.train()
     losses = {
@@ -329,7 +344,10 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0):
 
         l1 = model.l1_loss()
 
-        loss = pnll + mse_weight * mse + kld_weight * kld + l1
+        # Proper weighting of examples.
+        w = w_lds[y]
+
+        loss = pnll + mse_weight * w * mse + kld_weight * kld + l1
 
         loss.backward()
         optimizer.step()

@@ -348,14 +348,14 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
         w = w_lds[int(y.item())]
 
         loss = pnll + mse_weight * w * mse + kld_weight * kld + l1
-
+        weighted_mse = mse_weight * w * mse
         loss.backward()
         optimizer.step()
 
         # Keep track of scores
         losses["loss"].update(loss.item(), X.size(0))
         losses["pnll"].update(pnll.item(), X.size(0))
-        losses["mse"].update(mse.item(), X.size(0))
+        losses["mse"].update(weighted_mse.item(), X.size(0))
         losses["kld"].update(kld.item(), X.size(0))
 
     # Calculate the average loss values for the epoch.

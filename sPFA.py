@@ -75,7 +75,7 @@ class sPFA(nn.Module):
         # greater than 0.
 
         mu = self.enc_mu(h2)
-        logvar = self.softplus(self.enc_logvar(h2))
+        logvar = self.enc_logvar(h2)
 
         s_tilde = self.reparameterize(mu, logvar)
 

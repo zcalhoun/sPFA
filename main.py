@@ -320,6 +320,7 @@ def test(model, test_loader, kld_weight):
     for batch_idx, (X, y, w) in enumerate(test_loader):
         X = X.to(model.device)
         y = y.to(model.device)
+        w = w.to(model.device)
         s, W, mu, logvar, y_hat = model(X)
 
         recon_batch = s @ W
@@ -355,6 +356,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
         optimizer.zero_grad()
         X = X.to(model.device)
         y = y.to(model.device)
+        w = w.to(model.device)
         s, W, mu, logvar, y_hat = model(X)
 
         recon_batch = s @ W
@@ -394,7 +396,7 @@ def pretrain(model, data_loader, optimizer):
     for batch_idx, (X, y, w) in enumerate(data_loader):
         X = X.to(model.device)
         y = y.to(model.device)
-
+        w = w.to(model.device)
         # Forward pass
         s, W, mu, logvar, y_hat = model(X)
 

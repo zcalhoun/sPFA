@@ -20,6 +20,7 @@ singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets
 	--num_components 200 \
 	--l1_reg 0.001 \
 	--init_kld 0.000001 \
+    --pretrain_batch_size 16 \
 	--klds_epochs 10 \
 	--mse_weight 100 \
     --weighted True \

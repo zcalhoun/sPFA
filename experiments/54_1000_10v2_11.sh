@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --output=./slurm53.out
-#SBATCH --error=./slurm53.err
+#SBATCH --output=./slurm54.out
+#SBATCH --error=./slurm54.err
 #SBATCH -p carlsonlab-gpu
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
@@ -26,4 +26,4 @@ singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets
     --weighted True \
 	--epochs 400 \
 	--pred_dropout 0.5 \
-	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp53/
+	--results_path /hpc/group/carlsonlab/zdc6/sPFA/results/exp54/

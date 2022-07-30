@@ -16,6 +16,7 @@ singularity exec --nv -B /hpc/group/carlsonlab/zdc6/ ~/wildfires/wildfire-tweets
 	--train_cities chicago raleigh los\ angeles orange san\ francisco dallas \
 	--test_cities phoenix seattle new\ york \
 	--nmf_max_iter 300 \
+    --nmf_tol 0.01 \
 	--num_components 200 \
 	--l1_reg 0.001 \
 	--init_kld 0.000001 \

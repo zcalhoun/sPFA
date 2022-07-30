@@ -324,7 +324,7 @@ def test(model, test_loader, kld_weight):
 
         recon_batch = s @ W
 
-        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat)
+        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
         l1 = model.l1_loss()
 
@@ -403,7 +403,7 @@ def pretrain(model, data_loader, optimizer):
 
         # Compute loss - this only includes the PNLL loss, as
         # we want to completely learn reconstruction, first.
-        loss, _, _ = model.loss_function(recon_batch, X, mu, logvar, y, y_hat)
+        loss, _, _ = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
         loss.backward()
         optimizer.step()

@@ -80,7 +80,7 @@ class sPFA(nn.Module):
         s_tilde = self.reparameterize(mu, logvar)
 
         s = self.softplus(s_tilde)
-        W = F.relu(self.W_tilde)
+        W = self.softplus(self.W_tilde)
 
         # Predict using dropout on the nodes coming
         # out of beta. This should prevent overfitting
@@ -112,20 +112,16 @@ class sPFA(nn.Module):
     def l1_loss(self):
         """This loss pushes down the beta parameters so that they are
         close to zero"""
-        beta_params = list(self.beta.parameters())
-        weights = torch.sum(torch.abs(beta_params[0]))
-        intercept = torch.abs(beta_params[1])
-        return self.l1_reg * (weights + intercept)
+        l1 = 0
+        for param in self.parameters():
+            l1 += torch.norm(param, 1)
 
-    def loss_function(self, recon_x, x, mu, logvar, y, y_hat):
+        return self.l1_reg * l1
+
+    def loss_function(self, recon_x, x, mu, logvar, y, y_hat, w):
         KLD = self._kl_divergence(mu, logvar)
         PNLL = self.pois_nll(recon_x, x)
-        # This will disproportionately weight higher values of y
-        MSE = (y - y_hat).pow(2).mean()
-
-        #         # Add in the L1 loss
-        #         L1 = 0
-        #         for b in model.beta.parameters():
-        #             L1 += b.abs().sum()
+        # w is the weight of the specific AQI value provided here.
+        MSE = (w * (y - y_hat).pow(2)).mean()
 
         return PNLL, MSE, KLD

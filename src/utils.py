@@ -259,6 +259,7 @@ class LDSWeights:
 class TweetDataset(Dataset):
     def __init__(self, data):
         self.data = data
+        self.LDS = LDSWeights(data)
 
     def __len__(self):
         return len(self.data)
@@ -267,10 +268,12 @@ class TweetDataset(Dataset):
     def __getitem__(self, idx):
         aqi = self.data[idx]["aqi"]
         tweets = self.data[idx]["tweets"]
+        w = self.LDS[aqi]
 
         return (
             torch.from_numpy(tweets).float().requires_grad_(False),
             torch.tensor(aqi),
+            torch.tensor(w),
         )
 
 

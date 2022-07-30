@@ -114,6 +114,13 @@ parser.add_argument(
 parser.add_argument(
     "--pretrain_lr", type=float, default=1e-6, help="pretrain learning rate"
 )
+parser.add_argument(
+    "--pretrain_checkpoint",
+    type=str,
+    default=None,
+    help="""Use this pretraining checkpoint if you would like 
+            to start training using the pretrained version of the current model.""",
+)
 
 ######################
 # Training args
@@ -192,44 +199,57 @@ def main():
     logging.info(f"Model created on {model.device}.")
 
     # Pretrain the model
-    logging.info("Running NMF...")
     step_timer.reset()
 
-    pretrain_nmf(
-        model, train_data, args.nmf_init, args.nmf_tol, args.nmf_max_iter,
-    )
-    logging.info(f"NMF ran in {step_timer.minutes_elapsed():.2f} minutes.")
-
-    # Create pretrain data loaders.
-    train_loader = DataLoader(
-        X_train, batch_size=args.pretrain_batch_size, shuffle=True
-    )
-    test_loader = DataLoader(X_test, batch_size=args.pretrain_batch_size, shuffle=True)
-
-    # Train the model on the weights from pretraining
-    logging.info("Pretraining model on NMF...")
-    pretrain_optim = optim.Adam(model.parameters(), lr=args.pretrain_lr)
-    model.W_tilde.requires_grad = False
-
-    # Set up performance monitor
-    monitor = PerformanceMonitor(args.results_path,)
-    step_timer.reset()  # Reset timer for pretraining
-    epoch_timer = Timer()
-    for epoch in range(args.pretrain_epochs):
-        epoch_timer.reset()
-        scores = pretrain(model, train_loader, pretrain_optim)
-
-        # Log performance of the epoch
-        monitor.log(
-            "pretrain", epoch, scores, epoch_timer.minutes_elapsed(),
+    if args.pretrain_checkpoint is not None:
+        logging.info(f"Loading pretrained model from {args.pretrain_checkpoint}")
+        model.load_state_dict(torch.load(args.pretrain_checkpoint).state_dict())
+        logging.info(f"Model loaded in {step_timer.elapsed():.2f} seconds.")
+    else:
+        logging.info("Running NMF to pretrain the model.")
+        pretrain_nmf(
+            model, train_data, args.nmf_init, args.nmf_tol, args.nmf_max_iter,
         )
-        logging.info(
-            f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+        logging.info(f"NMF ran in {step_timer.minutes_elapsed():.2f} minutes.")
+
+        # Create pretrain data loaders.
+        train_loader = DataLoader(
+            X_train, batch_size=args.pretrain_batch_size, shuffle=True
+        )
+        test_loader = DataLoader(
+            X_test, batch_size=args.pretrain_batch_size, shuffle=True
         )
 
-    logging.info(f"Pretraining complete in {step_timer.minutes_elapsed():.2f} minutes.")
-    # Turn the gradient back on prior to training
-    model.W_tilde.requires_grad = True
+        # Train the model on the weights from pretraining
+        logging.info("Pretraining model on NMF...")
+        pretrain_optim = optim.Adam(model.parameters(), lr=args.pretrain_lr)
+        model.W_tilde.requires_grad = False
+
+        # Set up performance monitor
+        monitor = PerformanceMonitor(args.results_path,)
+        step_timer.reset()  # Reset timer for pretraining
+        epoch_timer = Timer()
+        for epoch in range(args.pretrain_epochs):
+            epoch_timer.reset()
+            scores = pretrain(model, train_loader, pretrain_optim)
+
+            # Log performance of the epoch
+            monitor.log(
+                "pretrain", epoch, scores, epoch_timer.minutes_elapsed(),
+            )
+            logging.info(
+                f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+            )
+
+            logging.info(
+                f"Pretraining complete in {step_timer.minutes_elapsed():.2f} minutes."
+            )
+
+        # Turn the gradient back on prior to training
+        model.W_tilde.requires_grad = True
+
+        # Save this checkpoint as pretrained
+        save_model(model, args.results_path, "pretrained.pt")
 
     # Create the training data loaders
     train_loader = DataLoader(X_train, batch_size=args.batch_size, shuffle=True)
@@ -248,7 +268,6 @@ def main():
     )
     logging.info("Beginning training...")
     best_test_loss = float("inf")
-    best_mse_loss = float("inf")
     best_mse_kld_loss = float("inf")
     for epoch in range(args.epochs):
         logging.info(f"Beginning epoch {epoch}")
@@ -298,7 +317,7 @@ def test(model, test_loader, kld_weight):
         "mse": AverageMeter(),
         "kld": AverageMeter(),
     }
-    for batch_idx, (X, y) in enumerate(test_loader):
+    for batch_idx, (X, y, w) in enumerate(test_loader):
         X = X.to(model.device)
         y = y.to(model.device)
         s, W, mu, logvar, y_hat = model(X)
@@ -332,7 +351,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
         "mse": AverageMeter(),
         "kld": AverageMeter(),
     }
-    for batch_idx, (X, y) in enumerate(train_loader):
+    for batch_idx, (X, y, w) in enumerate(train_loader):
         optimizer.zero_grad()
         X = X.to(model.device)
         y = y.to(model.device)
@@ -340,15 +359,14 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
 
         recon_batch = s @ W
 
-        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat)
+        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
         l1 = model.l1_loss()
 
         # Proper weighting of examples.
-        w = w_lds[int(y.item())]
 
-        loss = pnll + mse_weight * w * mse + kld_weight * kld + l1
-        weighted_mse = mse_weight * w * mse
+        loss = pnll + mse_weight * mse + kld_weight * kld + l1
+        weighted_mse = mse_weight * mse
         loss.backward()
         optimizer.step()
 
@@ -373,7 +391,7 @@ def pretrain(model, data_loader, optimizer):
     model.train()
     losses = AverageMeter()
     scores = defaultdict(str)
-    for batch_idx, (X, y) in enumerate(data_loader):
+    for batch_idx, (X, y, w) in enumerate(data_loader):
         X = X.to(model.device)
         y = y.to(model.device)
 

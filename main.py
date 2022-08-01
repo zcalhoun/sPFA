@@ -327,7 +327,7 @@ def test(model, test_loader, kld_weight):
 
         pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
-        l1 = model.l1_loss()
+        l1 = model.l1_loss(s)
 
         loss = pnll + mse + kld_weight * kld + l1
 
@@ -365,7 +365,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
 
         pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
-        l1 = model.l1_loss()
+        l1 = model.l1_loss(s)
 
         # Proper weighting of examples.
 

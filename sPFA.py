@@ -108,7 +108,7 @@ class sPFA(nn.Module):
 
         return KLD
 
-    def l1_loss(self):
+    def l1_loss(self, s):
         """This loss pushes down the beta parameters so that they are
         close to zero"""
         return self.l1_reg * s.sum(axis=1).mean()

@@ -200,6 +200,7 @@ def main():
 
     # Pretrain the model
     step_timer.reset()
+    monitor = PerformanceMonitor(args.results_path,)
     epoch_timer = Timer()
     if args.pretrain_checkpoint is not None:
         logging.info(f"Loading pretrained model from {args.pretrain_checkpoint}")
@@ -226,7 +227,7 @@ def main():
         model.W_tilde.requires_grad = False
 
         # Set up performance monitor
-        monitor = PerformanceMonitor(args.results_path,)
+
         step_timer.reset()  # Reset timer for pretraining
         for epoch in range(args.pretrain_epochs):
             epoch_timer.reset()
@@ -244,11 +245,11 @@ def main():
                 f"Pretraining complete in {step_timer.minutes_elapsed():.2f} minutes."
             )
 
-        # Turn the gradient back on prior to training
-        model.W_tilde.requires_grad = True
-
         # Save this checkpoint as pretrained
         save_model(model, args.results_path, "pretrained.pt")
+
+    # Turn the gradient back on prior to training
+    model.W_tilde.requires_grad = True
 
     # Create the training data loaders
     train_loader = DataLoader(X_train, batch_size=args.batch_size, shuffle=True)

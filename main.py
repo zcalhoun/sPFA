@@ -203,7 +203,7 @@ def main():
 
     if args.pretrain_checkpoint is not None:
         logging.info(f"Loading pretrained model from {args.pretrain_checkpoint}")
-        model.load_state_dict(torch.load(args.pretrain_checkpoint).state_dict())
+        model.load_state_dict(torch.load(args.pretrain_checkpoint))
         logging.info(f"Model loaded in {step_timer.elapsed():.2f} seconds.")
     else:
         logging.info("Running NMF to pretrain the model.")
@@ -316,6 +316,7 @@ def test(model, test_loader, kld_weight):
         "pnll": AverageMeter(),
         "mse": AverageMeter(),
         "kld": AverageMeter(),
+        "l1": AverageMeter(),
     }
     for batch_idx, (X, y, w) in enumerate(test_loader):
         X = X.to(model.device)
@@ -336,6 +337,7 @@ def test(model, test_loader, kld_weight):
         losses["pnll"].update(pnll.item(), X.size(0))
         losses["mse"].update(mse.item(), X.size(0))
         losses["kld"].update(kld.item(), X.size(0))
+        losses["l1"].update(l1.item(), X.size(0))
 
     # Calculate the average loss values for the epoch.
     scores = {k: v.avg for k, v in losses.items()}
@@ -351,6 +353,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
         "pnll": AverageMeter(),
         "mse": AverageMeter(),
         "kld": AverageMeter(),
+        "l1": AverageMeter(),
     }
     for batch_idx, (X, y, w) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -377,6 +380,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
         losses["pnll"].update(pnll.item(), X.size(0))
         losses["mse"].update(weighted_mse.item(), X.size(0))
         losses["kld"].update(kld.item(), X.size(0))
+        losses["l1"].update(l1.item(), X.size(0))
 
     # Calculate the average loss values for the epoch.
     scores = {k: v.avg for k, v in losses.items()}

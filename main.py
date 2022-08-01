@@ -24,6 +24,7 @@ from src.utils import (
     KLDScheduler,
     Timer,
     PerformanceMonitor,
+    LDSWeights,
 )
 
 from sPFA import sPFA
@@ -70,6 +71,12 @@ parser.add_argument(
 parser.add_argument(
     "--test_cities", nargs="+", help="Cities to include in the test set", required=True
 )
+parser.add_argument(
+    "--weighted",
+    type=bool,
+    default=False,
+    help="Whether to weight the MSE based on the less sample portion.",
+)
 
 ######################
 # Model args
@@ -106,6 +113,13 @@ parser.add_argument(
 )
 parser.add_argument(
     "--pretrain_lr", type=float, default=1e-6, help="pretrain learning rate"
+)
+parser.add_argument(
+    "--pretrain_checkpoint",
+    type=str,
+    default=None,
+    help="""Use this pretraining checkpoint if you would like 
+            to start training using the pretrained version of the current model.""",
 )
 
 ######################
@@ -161,6 +175,14 @@ def main():
     X_train = TweetDataset(train_data)
     X_test = TweetDataset(test_data)
 
+    # Create an empty array with the length much greater than max AQI
+    # This is used in the case where we don't have weights used, in whih
+    # case the weights are all 1.
+    w_lds = [1] * 500
+    if args.weighted:
+        logging.info("Creating weighted dataset...")
+        w_lds = LDSWeights(train_data)
+
     # Set up the model
     vocab_size = len(count_vec.vocabulary_)
     logging.info("Setting up model...")
@@ -177,44 +199,57 @@ def main():
     logging.info(f"Model created on {model.device}.")
 
     # Pretrain the model
-    logging.info("Running NMF...")
     step_timer.reset()
 
-    pretrain_nmf(
-        model, train_data, args.nmf_init, args.nmf_tol, args.nmf_max_iter,
-    )
-    logging.info(f"NMF ran in {step_timer.minutes_elapsed():.2f} minutes.")
-
-    # Create pretrain data loaders.
-    train_loader = DataLoader(
-        X_train, batch_size=args.pretrain_batch_size, shuffle=True
-    )
-    test_loader = DataLoader(X_test, batch_size=args.pretrain_batch_size, shuffle=True)
-
-    # Train the model on the weights from pretraining
-    logging.info("Pretraining model on NMF...")
-    pretrain_optim = optim.Adam(model.parameters(), lr=args.pretrain_lr)
-    model.W_tilde.requires_grad = False
-
-    # Set up performance monitor
-    monitor = PerformanceMonitor(args.results_path,)
-    step_timer.reset()  # Reset timer for pretraining
-    epoch_timer = Timer()
-    for epoch in range(args.pretrain_epochs):
-        epoch_timer.reset()
-        scores = pretrain(model, train_loader, pretrain_optim)
-
-        # Log performance of the epoch
-        monitor.log(
-            "pretrain", epoch, scores, epoch_timer.minutes_elapsed(),
+    if args.pretrain_checkpoint is not None:
+        logging.info(f"Loading pretrained model from {args.pretrain_checkpoint}")
+        model.load_state_dict(torch.load(args.pretrain_checkpoint).state_dict())
+        logging.info(f"Model loaded in {step_timer.elapsed():.2f} seconds.")
+    else:
+        logging.info("Running NMF to pretrain the model.")
+        pretrain_nmf(
+            model, train_data, args.nmf_init, args.nmf_tol, args.nmf_max_iter,
         )
-        logging.info(
-            f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+        logging.info(f"NMF ran in {step_timer.minutes_elapsed():.2f} minutes.")
+
+        # Create pretrain data loaders.
+        train_loader = DataLoader(
+            X_train, batch_size=args.pretrain_batch_size, shuffle=True
+        )
+        test_loader = DataLoader(
+            X_test, batch_size=args.pretrain_batch_size, shuffle=True
         )
 
-    logging.info(f"Pretraining complete in {step_timer.minutes_elapsed():.2f} minutes.")
-    # Turn the gradient back on prior to training
-    model.W_tilde.requires_grad = True
+        # Train the model on the weights from pretraining
+        logging.info("Pretraining model on NMF...")
+        pretrain_optim = optim.Adam(model.parameters(), lr=args.pretrain_lr)
+        model.W_tilde.requires_grad = False
+
+        # Set up performance monitor
+        monitor = PerformanceMonitor(args.results_path,)
+        step_timer.reset()  # Reset timer for pretraining
+        epoch_timer = Timer()
+        for epoch in range(args.pretrain_epochs):
+            epoch_timer.reset()
+            scores = pretrain(model, train_loader, pretrain_optim)
+
+            # Log performance of the epoch
+            monitor.log(
+                "pretrain", epoch, scores, epoch_timer.minutes_elapsed(),
+            )
+            logging.info(
+                f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+            )
+
+            logging.info(
+                f"Pretraining complete in {step_timer.minutes_elapsed():.2f} minutes."
+            )
+
+        # Turn the gradient back on prior to training
+        model.W_tilde.requires_grad = True
+
+        # Save this checkpoint as pretrained
+        save_model(model, args.results_path, "pretrained.pt")
 
     # Create the training data loaders
     train_loader = DataLoader(X_train, batch_size=args.batch_size, shuffle=True)
@@ -233,13 +268,12 @@ def main():
     )
     logging.info("Beginning training...")
     best_test_loss = float("inf")
-    best_mse_loss = float("inf")
     best_mse_kld_loss = float("inf")
     for epoch in range(args.epochs):
         logging.info(f"Beginning epoch {epoch}")
         epoch_timer.reset()
         train_score = train(
-            model, train_loader, optimizer, klds.weight, args.mse_weight
+            model, train_loader, optimizer, klds.weight, args.mse_weight, w_lds
         )
         monitor.log(
             "train", epoch, train_score, epoch_timer.minutes_elapsed(), klds.weight,
@@ -283,14 +317,15 @@ def test(model, test_loader, kld_weight):
         "mse": AverageMeter(),
         "kld": AverageMeter(),
     }
-    for batch_idx, (X, y) in enumerate(test_loader):
+    for batch_idx, (X, y, w) in enumerate(test_loader):
         X = X.to(model.device)
         y = y.to(model.device)
+        w = w.to(model.device)
         s, W, mu, logvar, y_hat = model(X)
 
         recon_batch = s @ W
 
-        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat)
+        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
         l1 = model.l1_loss()
 
@@ -308,7 +343,7 @@ def test(model, test_loader, kld_weight):
     return scores
 
 
-def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0):
+def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0):
 
     model.train()
     losses = {
@@ -317,27 +352,30 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0):
         "mse": AverageMeter(),
         "kld": AverageMeter(),
     }
-    for batch_idx, (X, y) in enumerate(train_loader):
+    for batch_idx, (X, y, w) in enumerate(train_loader):
         optimizer.zero_grad()
         X = X.to(model.device)
         y = y.to(model.device)
+        w = w.to(model.device)
         s, W, mu, logvar, y_hat = model(X)
 
         recon_batch = s @ W
 
-        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat)
+        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
         l1 = model.l1_loss()
 
-        loss = pnll + mse_weight * mse + kld_weight * kld + l1
+        # Proper weighting of examples.
 
+        loss = pnll + mse_weight * mse + kld_weight * kld + l1
+        weighted_mse = mse_weight * mse
         loss.backward()
         optimizer.step()
 
         # Keep track of scores
         losses["loss"].update(loss.item(), X.size(0))
         losses["pnll"].update(pnll.item(), X.size(0))
-        losses["mse"].update(mse.item(), X.size(0))
+        losses["mse"].update(weighted_mse.item(), X.size(0))
         losses["kld"].update(kld.item(), X.size(0))
 
     # Calculate the average loss values for the epoch.
@@ -355,10 +393,10 @@ def pretrain(model, data_loader, optimizer):
     model.train()
     losses = AverageMeter()
     scores = defaultdict(str)
-    for batch_idx, (X, y) in enumerate(data_loader):
+    for batch_idx, (X, y, w) in enumerate(data_loader):
         X = X.to(model.device)
         y = y.to(model.device)
-
+        w = w.to(model.device)
         # Forward pass
         s, W, mu, logvar, y_hat = model(X)
 
@@ -367,7 +405,7 @@ def pretrain(model, data_loader, optimizer):
 
         # Compute loss - this only includes the PNLL loss, as
         # we want to completely learn reconstruction, first.
-        loss, _, _ = model.loss_function(recon_batch, X, mu, logvar, y, y_hat)
+        loss, _, _ = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
         loss.backward()
         optimizer.step()

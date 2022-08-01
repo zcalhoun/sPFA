@@ -200,7 +200,7 @@ def main():
 
     # Pretrain the model
     step_timer.reset()
-
+    epoch_timer = Timer()
     if args.pretrain_checkpoint is not None:
         logging.info(f"Loading pretrained model from {args.pretrain_checkpoint}")
         model.load_state_dict(torch.load(args.pretrain_checkpoint))
@@ -228,7 +228,6 @@ def main():
         # Set up performance monitor
         monitor = PerformanceMonitor(args.results_path,)
         step_timer.reset()  # Reset timer for pretraining
-        epoch_timer = Timer()
         for epoch in range(args.pretrain_epochs):
             epoch_timer.reset()
             scores = pretrain(model, train_loader, pretrain_optim)

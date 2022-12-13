@@ -128,7 +128,7 @@ def main():
     args = parser.parse_args()
     os.makedirs(args.dump_path)
     logging.basicConfig(
-        filename=os.path.join(args.results_path, "output.log"),
+        filename=os.path.join(args.dump_path, "output.log"),
         filemode="w",
         level=args.log_level,
         format="%(asctime)s - %(levelname)s - %(message)s",

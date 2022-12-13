@@ -37,8 +37,8 @@ class sPFA(nn.Module):
         self.prior_logvar = torch.tensor(prior_logvar)
         self.l1_reg = l1_reg
 
-        self.fc1 = nn.Linear(vocab, vocab)
-
+        # Getting rid of the hidden layer for now.
+        # self.fc1 = nn.Linear(vocab, vocab)
         self.enc_mu = nn.Linear(vocab, num_components, bias=False)
         self.enc_logvar = nn.Linear(vocab, num_components, bias=False)
 
@@ -47,8 +47,7 @@ class sPFA(nn.Module):
         self.pois_nll = nn.PoissonNLLLoss(log_input=False)
         self.softplus = nn.Softplus()
 
-        self.dropout = nn.Dropout(dropout)
-        #         self.lgamma = torch.lgamma
+        # self.dropout = nn.Dropout(dropout)
         self.pred_dropout = nn.Dropout(pred_dropout)
 
         self.beta = nn.Linear(num_components, 1, bias=True)
@@ -68,14 +67,14 @@ class sPFA(nn.Module):
     def forward(self, x):
 
         # Randomly drop an input sometimes
-        h1 = self.dropout(x)
-        # Add in a hidden layer for more expressivity
-        h2 = F.relu(self.fc1(h1))
+        # h1 = self.dropout(x)
+        # # Add in a hidden layer for more expressivity
+        # h2 = F.relu(self.fc1(h1))
         # Use the softplus here to ensure k and lam are
         # greater than 0.
 
-        mu = self.enc_mu(h2)
-        logvar = self.enc_logvar(h2)
+        mu = self.enc_mu(x)
+        logvar = self.enc_logvar(x)
 
         s_tilde = self.reparameterize(mu, logvar)
 
@@ -109,14 +108,10 @@ class sPFA(nn.Module):
 
         return KLD
 
-    def l1_loss(self):
+    def l1_loss(self, s):
         """This loss pushes down the beta parameters so that they are
         close to zero"""
-        l1 = 0
-        for param in self.parameters():
-            l1 += torch.norm(param, 1)
-
-        return self.l1_reg * l1
+        return self.l1_reg * s.sum(axis=1).mean()
 
     def loss_function(self, recon_x, x, mu, logvar, y, y_hat, w):
         KLD = self._kl_divergence(mu, logvar)

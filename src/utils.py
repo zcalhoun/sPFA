@@ -31,6 +31,7 @@ class PerformanceMonitor:
             "pnll",
             "mse",
             "kld",
+            "l1",
             "time",
             "kld_weight",
         ]
@@ -51,6 +52,7 @@ class PerformanceMonitor:
                         str(scores["pnll"]),
                         str(scores["mse"]),
                         str(scores["kld"]),
+                        str(scores["l1"]),
                         str(minutes),
                         str(kld_weight),
                     ]

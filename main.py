@@ -200,10 +200,11 @@ def main():
 
     # Pretrain the model
     step_timer.reset()
-
+    monitor = PerformanceMonitor(args.results_path,)
+    epoch_timer = Timer()
     if args.pretrain_checkpoint is not None:
         logging.info(f"Loading pretrained model from {args.pretrain_checkpoint}")
-        model.load_state_dict(torch.load(args.pretrain_checkpoint).state_dict())
+        model.load_state_dict(torch.load(args.pretrain_checkpoint))
         logging.info(f"Model loaded in {step_timer.elapsed():.2f} seconds.")
     else:
         logging.info("Running NMF to pretrain the model.")
@@ -226,9 +227,8 @@ def main():
         model.W_tilde.requires_grad = False
 
         # Set up performance monitor
-        monitor = PerformanceMonitor(args.results_path,)
+
         step_timer.reset()  # Reset timer for pretraining
-        epoch_timer = Timer()
         for epoch in range(args.pretrain_epochs):
             epoch_timer.reset()
             scores = pretrain(model, train_loader, pretrain_optim)
@@ -245,11 +245,11 @@ def main():
                 f"Pretraining complete in {step_timer.minutes_elapsed():.2f} minutes."
             )
 
-        # Turn the gradient back on prior to training
-        model.W_tilde.requires_grad = True
-
         # Save this checkpoint as pretrained
         save_model(model, args.results_path, "pretrained.pt")
+
+    # Turn the gradient back on prior to training
+    model.W_tilde.requires_grad = True
 
     # Create the training data loaders
     train_loader = DataLoader(X_train, batch_size=args.batch_size, shuffle=True)
@@ -316,6 +316,7 @@ def test(model, test_loader, kld_weight):
         "pnll": AverageMeter(),
         "mse": AverageMeter(),
         "kld": AverageMeter(),
+        "l1": AverageMeter(),
     }
     for batch_idx, (X, y, w) in enumerate(test_loader):
         X = X.to(model.device)
@@ -327,7 +328,7 @@ def test(model, test_loader, kld_weight):
 
         pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
-        l1 = model.l1_loss()
+        l1 = model.l1_loss(s)
 
         loss = pnll + mse + kld_weight * kld + l1
 
@@ -336,6 +337,7 @@ def test(model, test_loader, kld_weight):
         losses["pnll"].update(pnll.item(), X.size(0))
         losses["mse"].update(mse.item(), X.size(0))
         losses["kld"].update(kld.item(), X.size(0))
+        losses["l1"].update(l1.item(), X.size(0))
 
     # Calculate the average loss values for the epoch.
     scores = {k: v.avg for k, v in losses.items()}
@@ -351,6 +353,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
         "pnll": AverageMeter(),
         "mse": AverageMeter(),
         "kld": AverageMeter(),
+        "l1": AverageMeter(),
     }
     for batch_idx, (X, y, w) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -363,7 +366,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
 
         pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
-        l1 = model.l1_loss()
+        l1 = model.l1_loss(s)
 
         # Proper weighting of examples.
 
@@ -377,6 +380,7 @@ def train(model, train_loader, optimizer, kld_weight, mse_weight=1.0, w_lds=1.0)
         losses["pnll"].update(pnll.item(), X.size(0))
         losses["mse"].update(weighted_mse.item(), X.size(0))
         losses["kld"].update(kld.item(), X.size(0))
+        losses["l1"].update(l1.item(), X.size(0))
 
     # Calculate the average loss values for the epoch.
     scores = {k: v.avg for k, v in losses.items()}

@@ -1,4 +1,4 @@
-import twitter
+from .twitter import create_dataset
 
 
 def load(
@@ -9,6 +9,6 @@ def load(
     min_df=0.05,
     max_df=0.8,
 ):
-    return twitter.create_dataset(
+    return create_dataset(
         data_path, num_samples_per_day, tweets_per_sample, min_df, max_df, dump_path
     )

@@ -10,8 +10,6 @@
 #SBATCH --account=carlsonlab
 
 
-module load Python-GPU/3.7.6
-
-python3 main_2.py \
+singularity exec --nv -B /hpc/group/carlsonlab/zdc6/,/work/zdc6/ ~/wildfires/wildfire-tweets.sif python3 main_2.py \
     --data_path /hpc/group/carlsonlab/zdc6/data/lemmatized/ \
     --dump_path /work/zdc6/wildfire/results/

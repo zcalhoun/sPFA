@@ -11,6 +11,7 @@ class BaseModel(nn.Module):
         num_components=50,
         prior_mean=0,
         prior_logvar=0,
+        beta_bias=50.0,
         device="auto",
     ):
         super(BaseModel, self).__init__()
@@ -27,7 +28,7 @@ class BaseModel(nn.Module):
         self.pois_nll = nn.PoissonNLLLoss(log_input=False)
         self.softplus = nn.Softplus()
 
-        self.beta = nn.Linear(num_components, 1, bias=True)
+        self.beta = Beta(num_components, bias=beta_bias)
 
         if device == "auto":
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -54,9 +55,7 @@ class BaseModel(nn.Module):
         return x_hat
 
     def predict_aqi(self, s):
-        beta = self.softplus(self.beta)
-        y_hat = torch.matmul(s, beta)
-        return y_hat
+        return self.beta(s)
 
     def forward(self, x):
 
@@ -84,3 +83,16 @@ class BaseModel(nn.Module):
         aqi_loss = (y - y_hat).pow(2).mean()
 
         return recon_loss, kl_div, aqi_loss
+
+
+class Beta(nn.Module):
+    """This layer ensures that the beta parameter is positive"""
+
+    def __init__(self, topics: int, bias: float) -> None:
+        super(Beta, self).__init__()
+        self.beta = nn.Parameter(torch.rand(topics))
+        self.bias = nn.Parameter(torch.Tensor([bias]))
+        self.softplus = nn.Softplus()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x @ self.softplus(self.beta) + self.bias

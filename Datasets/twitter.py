@@ -162,6 +162,7 @@ class TweetDataset(Dataset):
         # Init
         super(TweetDataset, self).__init__()
         self.files = os.listdir(data_path)
+        self.data_path = data_path
 
     def __len__(self):
         return len(self.files)

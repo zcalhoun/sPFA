@@ -26,7 +26,7 @@ def create_dataset(
         train_dataset = TweetDataset(target_train_path)
         test_dataset = TweetDataset(target_test_path)
         cv = joblib.load(os.path.join(dump_path, "cv.joblib"))
-        return train_dataset, test_dataset, cv
+        return train_dataset, test_dataset
 
     files = os.listdir(data_path)
 

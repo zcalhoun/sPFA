@@ -34,8 +34,8 @@ def create_dataset(
         test_aqi = build_aqi(target_test_path)
 
         # Create the dataset object
-        train_dataset = TweetDataset(target_train_path)
-        test_dataset = TweetDataset(target_test_path)
+        train_dataset = TweetDataset(target_train_path, train_aqi)
+        test_dataset = TweetDataset(target_test_path, test_aqi)
 
         # Load the count vectorizer, too.
         cv = joblib.load(os.path.join(dump_path, "cv.joblib"))

@@ -77,12 +77,14 @@ class BaseModel(nn.Module):
         recon_loss = self.pois_nll(x_hat, x)
 
         # KL divergence
-        kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        kld = torch.mean(
+            -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1), dim=0
+        )
 
         # AQI loss
         aqi_loss = (y - y_hat).pow(2).mean()
 
-        return recon_loss, kl_div, aqi_loss
+        return recon_loss, kld, aqi_loss
 
 
 class Beta(nn.Module):

@@ -72,3 +72,15 @@ class BaseModel(nn.Module):
         y_hat = self.predict_aqi(s)
 
         return x_hat, y_hat, mu, logvar
+
+    def compute_loss(self, x, x_hat, y, y_hat, mu, logvar):
+        # reconstruction loss
+        recon_loss = self.pois_nll(x_hat, x)
+
+        # KL divergence
+        kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+        # AQI loss
+        aqi_loss = (y - y_hat).pow(2).mean()
+
+        return recon_loss, kl_div, aqi_loss

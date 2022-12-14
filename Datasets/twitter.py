@@ -95,7 +95,7 @@ def save_file(args):
     # Save the file
     with open(os.path.join(path, f"sample_{str(index)}.json"), "w") as f:
         json.dump(data, f)
-        print(f"Saved sample {str(index)}"
+        print(f"Saved sample {str(index)}")
 
 
 def split_and_load(data_path, tweets_per_sample, num_samples_per_day, files):

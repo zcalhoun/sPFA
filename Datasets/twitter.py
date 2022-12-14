@@ -5,6 +5,7 @@ import json
 import numpy as np
 from itertools import repeat
 import multiprocessing as mp
+import joblib
 
 # STACK TRACE
 import pdb
@@ -54,8 +55,8 @@ def create_dataset(
     # Iterate through the files and save the data for each sample into a
     # separate file
     # pdb.set_trace()
-    target_train_path = os.path.join(dump_path, "data/train")
-    target_test_path = os.path.join(dump_path, "data/test")
+    target_train_path = os.path.join(dump_path, "data/train/")
+    target_test_path = os.path.join(dump_path, "data/test/")
     os.makedirs(name=target_train_path, exist_ok=True)
     os.makedirs(name=target_test_path, exist_ok=True)
     save_samples(train_samples, train_aqi, target_train_path)
@@ -65,6 +66,9 @@ def create_dataset(
     # Create the tweet datasets and return them
     train_dataset = TweetDataset(target_train_path)
     test_dataset = TweetDataset(target_test_path)
+
+    # Save the count vector for future analysis
+    joblib.dump(cv, os.path.join(dump_path, "cv.joblib"))
 
     return train_dataset, test_dataset
 
@@ -91,6 +95,7 @@ def save_file(args):
     # Save the file
     with open(os.path.join(path, f"sample_{str(index)}.json"), "w") as f:
         json.dump(data, f)
+        print(f"Saved sample {str(index)}"
 
 
 def split_and_load(data_path, tweets_per_sample, num_samples_per_day, files):

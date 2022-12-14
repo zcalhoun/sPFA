@@ -126,7 +126,7 @@ def main():
     """
     global args
     args = parser.parse_args()
-    args.dump_path = os.path.join(args.dump_path, int(os.environ["SLURM_JOB_ID"]))
+    args.dump_path = os.path.join(args.dump_path, str(os.environ["SLURM_JOB_ID"]))
     os.makedirs(args.dump_path)
     logging.basicConfig(
         filename=os.path.join(args.dump_path, "output.log"),

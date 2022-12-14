@@ -19,9 +19,8 @@ class BaseModel(nn.Module):
         self.prior_mean = torch.tensor(prior_mean)
         self.prior_logvar = torch.tensor(prior_logvar)
 
-        self.fc1 = nn.Linear(vocab, hidden)
-        self.enc_mu = nn.Linear(hidden, num_components, bias=False)
-        self.enc_logvar = nn.Linear(hidden, num_components, bias=False)
+        self.enc_mu = nn.Linear(vocab, num_components, bias=False)
+        self.enc_logvar = nn.Linear(vocab, num_components, bias=False)
 
         self.W_tilde = nn.Parameter(torch.rand(num_components, vocab))
 
@@ -43,7 +42,6 @@ class BaseModel(nn.Module):
         return eps.mul(std).add_(mu)
 
     def encode(self, x):
-        x = self.fc1(x)
         x = self.softplus(x)
         mu = self.enc_mu(x)
         logvar = self.enc_logvar(x)

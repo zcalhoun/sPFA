@@ -84,6 +84,8 @@ def save_samples(samples, aqi, path):
     for result in pool.imap_unordered(save_file, data_args):
         print(result)
 
+    pool.close()
+
 
 def save_file(args):
     """This function saves the file"""
@@ -91,7 +93,7 @@ def save_file(args):
     index, sample, aqi, path = args
 
     # Create a json from the sample and the aqi
-    data = {"aqi": aqi, "sample": list(sample)}
+    data = {"aqi": aqi, "sample": sample.tolist()}
 
     # Save the file
     with open(os.path.join(path, f"sample_{str(index)}.json"), "w") as f:

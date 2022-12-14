@@ -11,7 +11,6 @@ class BaseModel(nn.Module):
         num_components=50,
         prior_mean=0,
         prior_logvar=0,
-        l1_reg=0.0,
         device="auto",
     ):
         super(BaseModel, self).__init__()
@@ -55,6 +54,11 @@ class BaseModel(nn.Module):
         W = self.softplus(self.W_tilde)
         x_hat = torch.matmul(s, W)
         return x_hat
+
+    def predict_aqi(self, s):
+        beta = self.softplus(self.beta)
+        y_hat = torch.matmul(s, beta)
+        return y_hat
 
     def forward(self, x):
 

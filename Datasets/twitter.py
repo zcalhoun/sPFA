@@ -91,7 +91,7 @@ def save_file(args):
     index, sample, aqi, path = args
 
     # Create a json from the sample and the aqi
-    data = {"aqi": aqi, "sample": sample}
+    data = {"aqi": aqi, "sample": list(sample)}
 
     # Save the file
     with open(os.path.join(path, f"sample_{str(index)}.json"), "w") as f:

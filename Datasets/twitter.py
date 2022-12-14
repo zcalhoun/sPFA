@@ -13,6 +13,11 @@ from sklearn.feature_extraction.text import CountVectorizer
 import torch
 from torch.utils.data import Dataset
 
+# Needed for creating empirical weights
+from collections import Counter
+from scipy.ndimage import convolve1d
+from scipy.ndimage import gaussian_filter1d
+
 
 def create_dataset(
     data_path, num_samples_per_day, tweets_per_sample, min_df, max_df, dump_path
@@ -24,8 +29,15 @@ def create_dataset(
     # if path exists
     if os.path.exists(target_train_path) and os.path.exists(target_test_path):
         logging.info("Loading the data from disk.")
+        # Get the list of aqi needed to initialize the dataset.
+        train_aqi = build_aqi(target_train_path)
+        test_aqi = build_aqi(target_test_path)
+
+        # Create the dataset object
         train_dataset = TweetDataset(target_train_path)
         test_dataset = TweetDataset(target_test_path)
+
+        # Load the count vectorizer, too.
         cv = joblib.load(os.path.join(dump_path, "cv.joblib"))
         return train_dataset, test_dataset
 
@@ -71,13 +83,35 @@ def create_dataset(
 
     logging.info("Returning the datasets.")
     # Create the tweet datasets and return them
-    train_dataset = TweetDataset(target_train_path)
-    test_dataset = TweetDataset(target_test_path)
+    train_dataset = TweetDataset(target_train_path, train_aqi)
+    test_dataset = TweetDataset(target_test_path, test_aqi)
 
     # Save the count vector for future analysis
     joblib.dump(cv, os.path.join(dump_path, "cv.joblib"))
 
     return train_dataset, test_dataset
+
+
+def build_aqi(path):
+    """This function builds the aqi from the files"""
+    files = os.listdir(path)
+    aqi = []
+    pool = mp.Pool(mp.cpu_count() - 1)
+    for result in pool.imap_unordered(read_aqi, zip(repeat(path), files)):
+        aqi.append(result)
+
+    pool.close()
+
+    return aqi
+
+
+def read_aqi(args):
+    """This function reads the aqi from the file"""
+    with open(os.path.join(args[0], args[1]), "r") as f:
+        data = json.load(f)
+
+    # Return the aqi
+    return data["aqi"]
 
 
 def save_samples(samples, aqi, path):
@@ -159,11 +193,12 @@ def load_sample(args):
 
 
 class TweetDataset(Dataset):
-    def __init__(self, data_path):
+    def __init__(self, data_path, aqi):
         # Init
         super(TweetDataset, self).__init__()
         self.files = os.listdir(data_path)
         self.data_path = data_path
+        self.LDS = LDSWeights(aqi)
 
     def __len__(self):
         return len(self.files)
@@ -173,6 +208,58 @@ class TweetDataset(Dataset):
         with open(os.path.join(self.data_path, self.files[index])) as f:
             data = json.load(f)
 
-        return torch.tensor(data["sample"], dtype=torch.float), torch.tensor(
-            [data["aqi"]], dtype=torch.float
+        return (
+            torch.tensor(data["sample"], dtype=torch.float),
+            torch.tensor([data["aqi"]], dtype=torch.float),
+            torch.tensor([self.LDS.weights[data["aqi"]]], dtype=torch.float),
         )
+
+
+class LDSWeights:
+    def __init__(self, data):
+        self.weights = self._generate_weights(data)
+
+    def _generate_weights(self, data):
+
+        # Reduce to bins of size 5.
+        all_aqi = [day // 5 for day in data]
+
+        # Generate the number of bins:
+        Nb = max(all_aqi) + 1
+        num_samples_of_bins = dict(Counter(all_aqi))
+        emp_label_dist = [num_samples_of_bins.get(i, 0) for i in range(Nb)]
+
+        # lds_kernel_window: [ks,], here for example, we use gaussian, ks=5, sigma=2
+        lds_kernel_window = self._get_lds_kernel_window(
+            kernel="gaussian", ks=20, sigma=5
+        )
+        # calculate effective label distribution: [Nb,]
+        eff_label_dist = convolve1d(
+            np.array(emp_label_dist), weights=lds_kernel_window, mode="constant"
+        )
+
+        # Turn the effective label distribution into the probability
+        w = [np.float32(1 / e) for e in eff_label_dist]
+        return w / np.sum(w)
+
+    def __len__(self):
+        return len(self.weights)
+
+    def __getitem__(self, key):
+        idx = key // 5
+        return self.weights[idx]
+
+    def _get_lds_kernel_window(self, kernel, ks, sigma):
+        assert kernel in ["gaussian", "triang", "laplace"]
+        half_ks = (ks - 1) // 2
+        if kernel == "gaussian":
+            base_kernel = [0.0] * half_ks + [1.0] + [0.0] * half_ks
+            kernel_window = gaussian_filter1d(base_kernel, sigma=sigma) / max(
+                gaussian_filter1d(base_kernel, sigma=sigma)
+            )
+        elif kernel == "triang":
+            raise NotImplementedError("Triangular kernel not implemented.")
+        else:
+            raise NotImplementedError("Laplacian kernel not implemented.")
+
+        return kernel_window

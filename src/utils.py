@@ -51,7 +51,6 @@ class PerformanceMonitor:
                         str(scores["pnll"]),
                         str(scores["mse"]),
                         str(scores["kld"]),
-                        str(scores["l1"]),
                         str(minutes),
                         str(kld_weight),
                     ]

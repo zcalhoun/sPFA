@@ -7,9 +7,6 @@ from itertools import repeat
 import multiprocessing as mp
 import joblib
 
-# STACK TRACE
-import pdb
-
 from sklearn.feature_extraction.text import CountVectorizer
 
 # import torch Dataset
@@ -54,7 +51,6 @@ def create_dataset(
     logging.info("Saving the samples")
     # Iterate through the files and save the data for each sample into a
     # separate file
-    # pdb.set_trace()
     target_train_path = os.path.join(dump_path, "data/train/")
     target_test_path = os.path.join(dump_path, "data/test/")
     os.makedirs(name=target_train_path, exist_ok=True)

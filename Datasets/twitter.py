@@ -79,9 +79,10 @@ def save_samples(samples, aqi, path):
     samples = samples.toarray()
     data_args = zip(range(len(samples)), samples, aqi, repeat(path))
 
-    # Create the pool and load the dataset
-    with mp.Pool(mp.cpu_count() - 1) as pool:
-        pool.imap_unordered(save_file, data_args)
+    pool = mp.Pool(mp.cpu_count() - 1)
+
+    for result in pool.imap_unordered(save_file, data_args):
+        print(result)
 
 
 def save_file(args):
@@ -95,7 +96,8 @@ def save_file(args):
     # Save the file
     with open(os.path.join(path, f"sample_{str(index)}.json"), "w") as f:
         json.dump(data, f)
-        print(f"Saved sample {str(index)}")
+
+    return f"sample_{str(index)}.json"
 
 
 def split_and_load(data_path, tweets_per_sample, num_samples_per_day, files):

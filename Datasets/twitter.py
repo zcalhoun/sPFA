@@ -17,6 +17,17 @@ def create_dataset(
     data_path, num_samples_per_day, tweets_per_sample, min_df, max_df, dump_path
 ):
 
+    target_train_path = os.path.join(dump_path, "data/train/")
+    target_test_path = os.path.join(dump_path, "data/test/")
+
+    # if path exists
+    if os.path.exists(target_train_path) and os.path.exists(target_test_path):
+        logging.info("Loading the data from disk.")
+        train_dataset = TweetDataset(target_train_path)
+        test_dataset = TweetDataset(target_test_path)
+        cv = joblib.load(os.path.join(dump_path, "cv.joblib"))
+        return train_dataset, test_dataset, cv
+
     files = os.listdir(data_path)
 
     # Create the data split
@@ -51,8 +62,7 @@ def create_dataset(
     logging.info("Saving the samples")
     # Iterate through the files and save the data for each sample into a
     # separate file
-    target_train_path = os.path.join(dump_path, "data/train/")
-    target_test_path = os.path.join(dump_path, "data/test/")
+
     os.makedirs(name=target_train_path, exist_ok=True)
     os.makedirs(name=target_test_path, exist_ok=True)
     save_samples(train_samples, train_aqi, target_train_path)
@@ -153,7 +163,7 @@ class TweetDataset(Dataset):
         super(TweetDataset, self).__init__()
         self.files = os.listdir(data_path)
 
-    def len(self):
+    def __len__(self):
         return len(self.files)
 
     def __getitem__(self, index):

@@ -235,7 +235,6 @@ def test(model, test_loader, kld_weight):
         losses["pnll"].update(pnll.item(), X.size(0))
         losses["mse"].update(mse.item(), X.size(0))
         losses["kld"].update(kld.item(), X.size(0))
-        losses["l1"].update(l1.item(), X.size(0))
 
     # Calculate the average loss values for the epoch.
     scores = {k: v.avg for k, v in losses.items()}
@@ -247,6 +246,14 @@ def train(model, dataloader, optimizer, beta):
     epoch_loss = 0
     count = 0
     model.train()
+
+    losses = {
+        "loss": AverageMeter(),
+        "pnll": AverageMeter(),
+        "mse": AverageMeter(),
+        "kld": AverageMeter(),
+        "l1": AverageMeter(),
+    }
     for i, (X, y, w) in enumerate(dataloader):
         X = X.to(model.device)
         y = y.to(model.device)
@@ -265,6 +272,12 @@ def train(model, dataloader, optimizer, beta):
 
         epoch_loss += loss.item() * X.size(0)
         count += X.size(0)
+
+        # Keep track of scores
+        losses["loss"].update(loss.item(), X.size(0))
+        losses["pnll"].update(recon.item(), X.size(0))
+        losses["mse"].update(mse.item(), X.size(0))
+        losses["kld"].update(kld.item(), X.size(0))
 
     return epoch_loss / count
 

@@ -211,7 +211,7 @@ class TweetDataset(Dataset):
         return (
             torch.tensor(data["sample"], dtype=torch.float),
             torch.tensor([data["aqi"]], dtype=torch.float),
-            torch.tensor([self.LDS.weights[data["aqi"]]], dtype=torch.float),
+            torch.tensor([self.LDS[data["aqi"]]], dtype=torch.float),
         )
 
 

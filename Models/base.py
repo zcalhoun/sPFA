@@ -7,7 +7,6 @@ class BaseModel(nn.Module):
     def __init__(
         self,
         vocab=None,
-        hidden=1000,
         num_components=50,
         prior_mean=0,
         prior_logvar=0,

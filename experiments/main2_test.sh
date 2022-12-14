@@ -11,5 +11,5 @@
 
 
 singularity exec --nv -B /hpc/group/carlsonlab/zdc6/,/work/zdc6/ ~/wildfires/wildfire-tweets.sif python3 main_2.py \
-    --data_path /hpc/group/carlsonlab/zdc6/data/lemmatized/ \
+    --data_path /hpc/group/carlsonlab/zdc6/wildfire/data/lemmatized/ \
     --dump_path /work/zdc6/wildfire/results/test/

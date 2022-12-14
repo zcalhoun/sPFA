@@ -173,4 +173,6 @@ class TweetDataset(Dataset):
         with open(os.path.join(self.data_path, self.files[index])) as f:
             data = json.load(f)
 
-        return torch.tensor(data["sample"]), torch.tensor([data["aqi"]])
+        return torch.tensor(data["sample"], dtype=torch.float), torch.tensor(
+            [data["aqi"]], dtype=torch.float
+        )

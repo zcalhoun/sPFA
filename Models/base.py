@@ -44,7 +44,7 @@ class BaseModel(nn.Module):
 
     def encode(self, x):
         x = self.fc1(x)
-        x = F.relu(x)
+        x = self.softplus(x)
         mu = self.enc_mu(x)
         logvar = self.enc_logvar(x)
         return mu, logvar

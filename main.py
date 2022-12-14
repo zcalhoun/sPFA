@@ -200,7 +200,9 @@ def main():
 
     # Pretrain the model
     step_timer.reset()
-    monitor = PerformanceMonitor(args.results_path,)
+    monitor = PerformanceMonitor(
+        args.results_path,
+    )
     epoch_timer = Timer()
     if args.pretrain_checkpoint is not None:
         logging.info(f"Loading pretrained model from {args.pretrain_checkpoint}")
@@ -209,7 +211,11 @@ def main():
     else:
         logging.info("Running NMF to pretrain the model.")
         pretrain_nmf(
-            model, train_data, args.nmf_init, args.nmf_tol, args.nmf_max_iter,
+            model,
+            train_data,
+            args.nmf_init,
+            args.nmf_tol,
+            args.nmf_max_iter,
         )
         logging.info(f"NMF ran in {step_timer.minutes_elapsed():.2f} minutes.")
 
@@ -235,7 +241,10 @@ def main():
 
             # Log performance of the epoch
             monitor.log(
-                "pretrain", epoch, scores, epoch_timer.minutes_elapsed(),
+                "pretrain",
+                epoch,
+                scores,
+                epoch_timer.minutes_elapsed(),
             )
             logging.info(
                 f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
@@ -276,12 +285,20 @@ def main():
             model, train_loader, optimizer, klds.weight, args.mse_weight, w_lds
         )
         monitor.log(
-            "train", epoch, train_score, epoch_timer.minutes_elapsed(), klds.weight,
+            "train",
+            epoch,
+            train_score,
+            epoch_timer.minutes_elapsed(),
+            klds.weight,
         )
         epoch_timer.reset()
         test_score = test(model, test_loader, klds.weight)
         monitor.log(
-            "test", epoch, test_score, epoch_timer.minutes_elapsed(), klds.weight,
+            "test",
+            epoch,
+            test_score,
+            epoch_timer.minutes_elapsed(),
+            klds.weight,
         )
         # Only consider saving every 10 epochs
         if (epoch + 1) % 10 == 0:

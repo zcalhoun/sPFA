@@ -69,7 +69,7 @@ class BaseModel(nn.Module):
 
         return x_hat, y_hat, mu, logvar
 
-    def compute_loss(self, x, x_hat, y, y_hat, mu, logvar):
+    def compute_loss(self, x, x_hat, y, y_hat, mu, logvar, w):
         # reconstruction loss
         recon_loss = self.pois_nll(x_hat, x)
 
@@ -79,7 +79,7 @@ class BaseModel(nn.Module):
         )
 
         # AQI loss
-        aqi_loss = (y - y_hat).pow(2).mean()
+        aqi_loss = (w * (y - y_hat).pow(2)).mean()
 
         return recon_loss, kld, aqi_loss
 

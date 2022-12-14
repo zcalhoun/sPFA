@@ -247,15 +247,16 @@ def train(model, dataloader, optimizer, beta):
     epoch_loss = 0
     count = 0
     model.train()
-    for i, (X, y) in enumerate(dataloader):
+    for i, (X, y, w) in enumerate(dataloader):
         X = X.to(model.device)
         y = y.to(model.device)
-        #         return y
+        w = w.to(model.device)
+
         optimizer.zero_grad()
 
         recon, y_hat, mu, logvar = model(X)
 
-        recon, kld, mse = model.compute_loss(X, recon, y, y_hat, mu, logvar)
+        recon, kld, mse = model.compute_loss(X, recon, y, y_hat, mu, logvar, w)
 
         loss = recon + beta * kld + mse
         loss.backward()

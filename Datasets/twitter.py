@@ -6,6 +6,9 @@ import numpy as np
 from itertools import repeat
 import multiprocessing as mp
 
+# STACK TRACE
+import pdb
+
 from sklearn.feature_extraction.text import CountVectorizer
 
 # import torch Dataset
@@ -50,6 +53,7 @@ def create_dataset(
     logging.info("Saving the samples")
     # Iterate through the files and save the data for each sample into a
     # separate file
+    pdb.set_trace()
     save_samples(train_samples, train_aqi, os.path.join(dump_path, "data/train"))
     save_samples(test_samples, test_aqi, os.path.join(dump_path, "data/test"))
 
@@ -106,6 +110,9 @@ def split_and_load(data_path, tweets_per_sample, num_samples_per_day, files):
 
     # Close the pool
     pool.close()
+
+    # Confirm that the lengths are all the same
+    assert len(files) == len(all_aqi) == len(all_samples)
 
     return all_aqi, all_samples
 

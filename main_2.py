@@ -50,7 +50,7 @@ parser.add_argument(
     help="number of times to sample from day",
 )
 parser.add_argument(
-    "--min_df", type=int, default=0.05, help="minimum document frequency"
+    "--min_df", type=float, default=0.05, help="minimum document frequency"
 )
 parser.add_argument(
     "--max_df", type=float, default=0.8, help="maximum document frequency"
@@ -143,10 +143,10 @@ def main():
     train_data, test_data = Datasets.load(
         args.data_path,
         args.dump_path,
-        args.num_samples_per_day,
-        args.tweets_per_sample,
-        args.min_df,
-        args.max_df,
+        num_samples_per_day=args.num_samples_per_day,
+        tweets_per_sample=args.tweets_per_sample,
+        min_df=args.min_df,
+        max_df=args.max_df,
     )
 
     logging.info(f"Data loaded in {step_timer.elapsed():.2f} seconds.")

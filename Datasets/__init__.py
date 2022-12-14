@@ -5,7 +5,7 @@ def load(
     data_path,
     dump_path,
     num_samples_per_day=1,
-    tweets_per_sample=10000,
+    tweets_per_sample=1000,
     min_df=0.05,
     max_df=0.8,
 ):

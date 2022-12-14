@@ -10,6 +10,7 @@ import joblib
 from sklearn.feature_extraction.text import CountVectorizer
 
 # import torch Dataset
+import torch
 from torch.utils.data import Dataset
 
 

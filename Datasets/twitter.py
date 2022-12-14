@@ -53,7 +53,7 @@ def create_dataset(
     logging.info("Saving the samples")
     # Iterate through the files and save the data for each sample into a
     # separate file
-    pdb.set_trace()
+    # pdb.set_trace()
     save_samples(train_samples, train_aqi, os.path.join(dump_path, "data/train"))
     save_samples(test_samples, test_aqi, os.path.join(dump_path, "data/test"))
 
@@ -68,6 +68,7 @@ def create_dataset(
 def save_samples(samples, aqi, path):
     """This function saves the samples to a file"""
     # Create the path if it doesn't exist
+    samples = samples.toarray()
     data_args = zip(range(len(samples)), samples, aqi, repeat(path))
 
     # Create the pool and load the dataset

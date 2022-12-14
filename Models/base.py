@@ -27,8 +27,6 @@ class BaseModel(nn.Module):
         self.pois_nll = nn.PoissonNLLLoss(log_input=False)
         self.softplus = nn.Softplus()
 
-        self.pred_dropout = nn.Dropout(pred_dropout)
-
         self.beta = nn.Linear(num_components, 1, bias=True)
 
         if device == "auto":

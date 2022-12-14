@@ -107,6 +107,8 @@ def split_and_load(data_path, tweets_per_sample, num_samples_per_day, files):
     # Close the pool
     pool.close()
 
+    return all_aqi, all_samples
+
 
 def load_sample(args):
     """This function creates samples from the files"""

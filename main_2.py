@@ -26,8 +26,8 @@ from src.utils import (
 )
 
 import Datasets
+import Models
 
-from sPFA import sPFA
 
 # Set up arguments
 parser = argparse.ArgumentParser(description="Implementation of S-PFA")
@@ -60,45 +60,19 @@ parser.add_argument(
 ######################
 # Model args
 ######################
+parser.add_argument("--model", type=str, default=None, choices=["base"], required=True)
 parser.add_argument(
     "--num_components", type=int, default=50, help="number of latent topics"
 )
 parser.add_argument("--prior_mean", type=int, default=0, help="prior mean")
 parser.add_argument("--prior_logvar", type=int, default=0, help="prior log variance")
-parser.add_argument("--l1_reg", type=float, default=0.0, help="l1 regularization")
 parser.add_argument("--mse_weight", type=float, default=1.0, help="mse weight")
 
-######################
-# Pre-Training args
-######################
-parser.add_argument(
-    "--nmf_init", type=str, default="nndsvdar", help="method used to initialize NMF"
-)
-parser.add_argument("--nmf_tol", type=float, default=1e-3, help="tolerance for NMF")
-parser.add_argument(
-    "--nmf_max_iter", type=int, default=100, help="maximum iterations for NMF"
-)
-parser.add_argument(
-    "--pretrain_batch_size", type=int, default=8, help="pretrain batch size"
-)
-parser.add_argument(
-    "--pretrain_epochs", type=int, default=10, help="number of pretrain epochs"
-)
-parser.add_argument(
-    "--pretrain_lr", type=float, default=1e-6, help="pretrain learning rate"
-)
-parser.add_argument(
-    "--pretrain_checkpoint",
-    type=str,
-    default=None,
-    help="""Use this pretraining checkpoint if you would like 
-            to start training using the pretrained version of the current model.""",
-)
 
 ######################
 # Training args
 ######################
-parser.add_argument("--epochs", type=int, default=200, help="number of epochs")
+parser.add_argument("--epochs", type=int, default=400, help="number of epochs")
 parser.add_argument("--batch_size", type=int, default=1, help="batch size")
 parser.add_argument("--init_kld", type=float, default=0.0, help="initial KLD value")
 parser.add_argument("--end_kld", type=float, default=1.0, help="end KLD value")
@@ -150,6 +124,148 @@ def main():
     )
 
     logging.info(f"Data loaded in {step_timer.elapsed():.2f} seconds.")
+
+    len_vocab = len(train_data[0][0])
+
+    logging.info("Creating model")
+    model = Models.load(
+        args.model,
+        {
+            "vocab": len_vocab,
+            "num_components": args.num_components,
+        },
+    )
+
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+
+    # Ramp up beta value from 0 to 1 over the course of args.klds_epochs
+    klds = KLDScheduler(
+        init_kld=args.init_kld, end_kld=args.end_kld, end_epoch=args.klds_epochs
+    )
+
+    # Create the training data loaders
+    train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
+    test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
+
+    logging.info("Beginning training...")
+    best_test_loss = float("inf")
+    best_mse_kld_loss = float("inf")
+
+    # Set up the performance monitor and timer
+    epoch_timer = Timer()
+    monitor = PerformanceMonitor(
+        args.dump_path,
+    )
+    for epoch in range(args.epochs):
+        logging.info(f"Beginning epoch {epoch}")
+        epoch_timer.reset()
+
+        # Train the model
+        train_score = train(model, train_loader, optimizer, klds.weight)
+
+        monitor.log(
+            "train",
+            epoch,
+            train_score,
+            epoch_timer.minutes_elapsed(),
+            klds.weight,
+        )
+
+        # Test the model
+        epoch_timer.reset()
+        test_score = test(model, test_loader, klds.weight)
+        monitor.log(
+            "test",
+            epoch,
+            test_score,
+            epoch_timer.minutes_elapsed(),
+            klds.weight,
+        )
+        # Only consider saving every 10 epochs
+        if (epoch + 1) % 10 == 0:
+            if test_score["loss"] < best_test_loss:
+                save_model(model, args.dump_path, "best.pt")
+                logging.info(f"Saving lowest loss model at epoch {epoch}.")
+                best_test_loss = test_score["loss"]
+            if test_score["mse"] < best_mse_kld_loss and klds.weight == args.end_kld:
+                save_model(model, args.dump_path, "best_mse_kld.pt")
+                logging.info(
+                    f"Saving lowest mse model with ending KLD at epoch {epoch}."
+                )
+                best_mse_kld_loss = test_score["mse"]
+        # Increase the KLD after each epoch
+        klds.step()
+        logging.info(
+            f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
+        )
+
+
+def save_model(model, path, filename):
+    torch.save(model.state_dict(), os.path.join(path, filename))
+
+
+@torch.no_grad()
+def test(model, test_loader, kld_weight):
+
+    model.eval()
+
+    losses = {
+        "loss": AverageMeter(),
+        "pnll": AverageMeter(),
+        "mse": AverageMeter(),
+        "kld": AverageMeter(),
+        "l1": AverageMeter(),
+    }
+    for batch_idx, (X, y, w) in enumerate(test_loader):
+        X = X.to(model.device)
+        y = y.to(model.device)
+        w = w.to(model.device)
+        s, W, mu, logvar, y_hat = model(X)
+
+        recon_batch = s @ W
+
+        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
+
+        l1 = model.l1_loss(s)
+
+        loss = pnll + mse + kld_weight * kld + l1
+
+        # Keep track of scores
+        losses["loss"].update(loss.item(), X.size(0))
+        losses["pnll"].update(pnll.item(), X.size(0))
+        losses["mse"].update(mse.item(), X.size(0))
+        losses["kld"].update(kld.item(), X.size(0))
+        losses["l1"].update(l1.item(), X.size(0))
+
+    # Calculate the average loss values for the epoch.
+    scores = {k: v.avg for k, v in losses.items()}
+
+    return scores
+
+
+def train(model, dataloader, optimizer, beta):
+    epoch_loss = 0
+    count = 0
+    model.train()
+    for i, (X, y) in enumerate(dataloader):
+        X = X.to(model.device)
+        y = y.to(model.device)
+        #         return y
+        optimizer.zero_grad()
+
+        recon, y_hat, mu, logvar = model(X)
+
+        recon, kld, mse = model.compute_loss(X, recon, y, y_hat, mu, logvar)
+
+        loss = recon + beta * kld + mse
+        loss.backward()
+
+        optimizer.step()
+
+        epoch_loss += loss.item() * X.size(0)
+        count += X.size(0)
+
+    return epoch_loss / count
 
 
 if __name__ == "__main__":

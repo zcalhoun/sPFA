@@ -54,13 +54,17 @@ def create_dataset(
     # Iterate through the files and save the data for each sample into a
     # separate file
     # pdb.set_trace()
-    save_samples(train_samples, train_aqi, os.path.join(dump_path, "data/train"))
-    save_samples(test_samples, test_aqi, os.path.join(dump_path, "data/test"))
+    target_train_path = os.path.join(dump_path, "data/train")
+    target_test_path = os.path.join(dump_path, "data/test")
+    os.makedirs(name=target_train_path, exist_ok=True)
+    os.makedirs(name=target_test_path, exist_ok=True)
+    save_samples(train_samples, train_aqi, target_train_path)
+    save_samples(test_samples, test_aqi, target_test_path)
 
     logging.info("Returning the datasets.")
     # Create the tweet datasets and return them
-    train_dataset = TweetDataset(os.path.join(dump_path, "data/train"))
-    test_dataset = TweetDataset(os.path.join(dump_path, "data/test"))
+    train_dataset = TweetDataset(target_train_path)
+    test_dataset = TweetDataset(target_test_path)
 
     return train_dataset, test_dataset
 

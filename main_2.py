@@ -28,6 +28,7 @@ from src.utils import (
 import Datasets
 import Models
 
+import pdb
 
 # Set up arguments
 parser = argparse.ArgumentParser(description="Implementation of S-PFA")
@@ -226,11 +227,10 @@ def test(model, test_loader, kld_weight):
 
         pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
 
-        l1 = model.l1_loss(s)
-
-        loss = pnll + mse + kld_weight * kld + l1
+        loss = pnll + mse + kld_weight * kld
 
         # Keep track of scores
+        pdb.set_trace()
         losses["loss"].update(loss.item(), X.size(0))
         losses["pnll"].update(pnll.item(), X.size(0))
         losses["mse"].update(mse.item(), X.size(0))

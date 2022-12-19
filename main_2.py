@@ -120,13 +120,11 @@ def main():
     make_dump_path()
     set_up_logging()
 
-    
-    
     # Print the arguments
     logging.info(args)
     logging.info(f"Cuda available: {torch.cuda.is_available()}")
-    # Set up timer to track how long model runs
 
+    # Set up timer to track how long model runs
     logging.info("Loading data...")
     step_timer = Timer()
     train_data, test_data = Datasets.load(
@@ -137,11 +135,12 @@ def main():
         min_df=args.min_df,
         max_df=args.max_df,
     )
-
     logging.info(f"Data loaded in {step_timer.elapsed():.2f} seconds.")
 
+    # Get the vocab length from the first line.
     len_vocab = len(train_data[0][0])
 
+    # Load the model
     logging.info("Creating model")
     model = Models.load(
         args.model,
@@ -236,7 +235,7 @@ def save_model(model, path, filename):
 
 
 @torch.no_grad()
-def test(model, test_loader, kld_weight):
+def test(model, test_loader, beta):
 
     model.eval()
 
@@ -245,19 +244,16 @@ def test(model, test_loader, kld_weight):
         "pnll": AverageMeter(),
         "mse": AverageMeter(),
         "kld": AverageMeter(),
-        "l1": AverageMeter(),
     }
     for batch_idx, (X, y, w) in enumerate(test_loader):
         X = X.to(model.device)
         y = y.to(model.device)
         w = w.to(model.device)
-        s, W, mu, logvar, y_hat = model(X)
+        recon, y_hat, mu, logvar = model(X)
 
-        recon_batch = s @ W
+        pnll, mse, kld = model.compute_loss(X, recon, y, y_hat, mu, logvar, w)
 
-        pnll, mse, kld = model.loss_function(recon_batch, X, mu, logvar, y, y_hat, w)
-
-        loss = pnll + mse + kld_weight * kld
+        loss = pnll + mse + beta * kld
 
         # Keep track of scores
         losses["loss"].update(loss.item(), X.size(0))
@@ -281,7 +277,6 @@ def train(model, dataloader, optimizer, beta):
         "pnll": AverageMeter(),
         "mse": AverageMeter(),
         "kld": AverageMeter(),
-        "l1": AverageMeter(),
     }
     for i, (X, y, w) in enumerate(dataloader):
         X = X.to(model.device)
@@ -308,7 +303,10 @@ def train(model, dataloader, optimizer, beta):
         losses["mse"].update(mse.item(), X.size(0))
         losses["kld"].update(kld.item(), X.size(0))
 
-    return epoch_loss / count
+    # Calculate the average loss values for the epoch.
+    scores = {k: v.avg for k, v in losses.items()}
+
+    return scores
 
 
 if __name__ == "__main__":

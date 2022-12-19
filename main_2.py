@@ -5,12 +5,7 @@ Zach Calhoun (zachary.calhoun@duke.edu)
 import os
 import argparse
 import logging
-from collections import defaultdict
 import numpy as np
-
-# Packages needed for pretraining
-from sklearn.decomposition import NMF
-from sklearn.feature_selection import r_regression
 
 # Torch packages
 import torch
@@ -22,13 +17,13 @@ from src.utils import (
     KLDScheduler,
     Timer,
     PerformanceMonitor,
-    LDSWeights,
 )
 
 import Datasets
 import Models
 
 import pdb
+
 
 # Set up arguments
 parser = argparse.ArgumentParser(description="Implementation of S-PFA")
@@ -38,12 +33,25 @@ parser = argparse.ArgumentParser(description="Implementation of S-PFA")
 ######################
 
 parser.add_argument(
-    "--data_path", type=str, default="data/storage", help="path to save loaded data."
+    "--data_path",
+    type=str,
+    default="data/storage",
+    required=True,
+    help="path from which to load lemmatized data.",
+)
+
+parser.add_argument(
+    "--data_dump_path",
+    type=str,
+    default=None,
+    required=True,
+    help="path to saved, preprocessed files (for re-use)",
 )
 
 parser.add_argument(
     "--tweets_per_sample", type=int, default=1000, help="number of tweets to aggregate"
 )
+
 parser.add_argument(
     "--num_samples_per_day",
     type=int,
@@ -69,7 +77,6 @@ parser.add_argument("--prior_mean", type=int, default=0, help="prior mean")
 parser.add_argument("--prior_logvar", type=int, default=0, help="prior log variance")
 parser.add_argument("--mse_weight", type=float, default=1.0, help="mse weight")
 
-
 ######################
 # Training args
 ######################
@@ -94,6 +101,13 @@ parser.add_argument(
     "--dump_path", type=str, default="./results", help="path to save results"
 )
 
+######################
+# Code testing args
+######################
+parser.add_argument(
+    "--DEBUG", type=bool, default=False, help="run in debug mode (smaller dataset)"
+)
+
 
 def main():
     """
@@ -101,14 +115,14 @@ def main():
     """
     global args
     args = parser.parse_args()
-    args.dump_path = os.path.join(args.dump_path, str(os.environ["SLURM_JOB_ID"]))
-    os.makedirs(args.dump_path)
-    logging.basicConfig(
-        filename=os.path.join(args.dump_path, "output.log"),
-        filemode="w",
-        level=args.log_level,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-    )
+
+    # Make the dump path and set up logging for this run.
+    make_dump_path()
+    set_up_logging()
+
+    
+    
+    # Print the arguments
     logging.info(args)
     logging.info(f"Cuda available: {torch.cuda.is_available()}")
     # Set up timer to track how long model runs
@@ -117,7 +131,7 @@ def main():
     step_timer = Timer()
     train_data, test_data = Datasets.load(
         args.data_path,
-        args.dump_path,
+        args.data_dump_path,
         num_samples_per_day=args.num_samples_per_day,
         tweets_per_sample=args.tweets_per_sample,
         min_df=args.min_df,
@@ -200,6 +214,22 @@ def main():
             f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
         )
 
+def make_dump_path():
+    if args.DEBUG is True:
+        # For testing, create one folder for data
+        args.dump_path = os.path.join(args.dump_path, "debug")
+    else:
+        args.dump_path = os.path.join(args.dump_path, str(os.environ["SLURM_JOB_ID"]))
+
+    os.makedirs(args.dump_path)
+
+def set_up_logging():
+    logging.basicConfig(
+        filename=os.path.join(args.dump_path, "output.log"),
+        filemode="w",
+        level=args.log_level,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
 
 def save_model(model, path, filename):
     torch.save(model.state_dict(), os.path.join(path, filename))
@@ -230,7 +260,6 @@ def test(model, test_loader, kld_weight):
         loss = pnll + mse + kld_weight * kld
 
         # Keep track of scores
-        pdb.set_trace()
         losses["loss"].update(loss.item(), X.size(0))
         losses["pnll"].update(pnll.item(), X.size(0))
         losses["mse"].update(mse.item(), X.size(0))

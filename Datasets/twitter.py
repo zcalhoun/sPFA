@@ -23,8 +23,13 @@ def create_dataset(
     data_path, num_samples_per_day, tweets_per_sample, min_df, max_df, dump_path
 ):
 
-    target_train_path = os.path.join(dump_path, "data/train/")
-    target_test_path = os.path.join(dump_path, "data/test/")
+    # Create path to load data
+    dump_str = [str(w) for w in [tweets_per_sample, num_samples_per_day, min_df, max_df]]
+    
+    dump_path = os.path.join(dump_path, *dump_str)
+
+    target_train_path = os.path.join(dump_path, "train")
+    target_test_path = os.path.join(dump_path, "test")
 
     # if path exists
     if os.path.exists(target_train_path) and os.path.exists(target_test_path):
@@ -52,7 +57,9 @@ def create_dataset(
             files,
         )
     )
+    assert len(train_files) > 0
     test_files = list(filter(lambda x: re.search("seattle|orange|new york", x), files))
+    assert len(test_files) > 0
     logging.info("Splitting and loading the files.")
     # Create the repeated file list
     train_aqi, train_samples = split_and_load(

@@ -173,7 +173,9 @@ def main():
         epoch_timer.reset()
 
         # Train the model
-        train_score = train(model, train_loader, optimizer, klds.weight)
+        train_score = train(
+            model, train_loader, optimizer, klds.weight, args.mse_weight
+        )
 
         monitor.log(
             "train",
@@ -252,7 +254,7 @@ def test(model, test_loader, beta):
         w = w.to(model.device)
         recon, y_hat, mu, logvar = model(X)
 
-        pnll, mse, kld = model.compute_loss(X, recon, y, y_hat, mu, logvar, w)
+        pnll, kld, mse = model.compute_loss(X, recon, y, y_hat, mu, logvar, w)
 
         loss = pnll + mse + beta * kld
 
@@ -268,7 +270,7 @@ def test(model, test_loader, beta):
     return scores
 
 
-def train(model, dataloader, optimizer, beta):
+def train(model, dataloader, optimizer, beta, mse_weight):
     epoch_loss = 0
     count = 0
     model.train()
@@ -290,7 +292,7 @@ def train(model, dataloader, optimizer, beta):
 
         recon, kld, mse = model.compute_loss(X, recon, y, y_hat, mu, logvar, w)
 
-        loss = recon + beta * kld + mse
+        loss = recon + beta * kld + mse_weight * mse
         loss.backward()
 
         optimizer.step()

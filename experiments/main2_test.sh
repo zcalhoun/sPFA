@@ -17,4 +17,5 @@ singularity exec --nv -B /hpc/group/carlsonlab/zdc6/,/work/zdc6/ ~/wildfires/wil
     --model base \
     --prior_mean -4 \
     --batch_size 32 \
-    --lr 0.0001
+    --lr 0.0001 \
+    --mse_weight 100

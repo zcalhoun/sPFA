@@ -4,6 +4,19 @@ from torch.nn import functional as F
 
 
 class BaseModel(nn.Module):
+    __slots__ = [
+        "num_components",
+        "prior_mean",
+        "prior_logvar",
+        "enc_mu",
+        "enc_logvar",
+        "W_tilde",
+        "pois_nll",
+        "softplus",
+        "beta",
+        "device",
+    ]
+
     def __init__(
         self,
         vocab=None,
@@ -69,14 +82,34 @@ class BaseModel(nn.Module):
 
         return x_hat, y_hat, mu, logvar
 
+    def _kl_divergence(self, mu, logvar):
+
+        kld = torch.mean(
+            -0.5
+            * torch.sum(
+                1
+                + logvar
+                - self.prior_logvar
+                - (mu - self.prior_mean) ** 2 / self.prior_logvar.exp()
+                - logvar.exp() / self.prior_logvar.exp(),
+                dim=1,
+            ),
+            dim=0,
+        )
+
+        # If no prior
+        # kld = torch.mean(
+        #     -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1), dim=0
+        # )
+
+        return kld
+
     def compute_loss(self, x, x_hat, y, y_hat, mu, logvar, w):
         # reconstruction loss
         recon_loss = self.pois_nll(x_hat, x)
 
         # KL divergence
-        kld = torch.mean(
-            -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1), dim=0
-        )
+        kld = self._kl_divergence(mu, logvar)
 
         # AQI loss
         aqi_loss = (w * (y - y_hat).pow(2)).mean()

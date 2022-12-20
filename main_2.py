@@ -85,7 +85,7 @@ parser.add_argument("--batch_size", type=int, default=1, help="batch size")
 parser.add_argument("--init_kld", type=float, default=0.0, help="initial KLD value")
 parser.add_argument("--end_kld", type=float, default=1.0, help="end KLD value")
 parser.add_argument(
-    "--klds_epochs", type=int, default=100, help="number of epochs to scale KLD"
+    "--klds_epochs", type=int, default=10, help="number of epochs to scale KLD"
 )
 parser.add_argument("--lr", type=float, default=1e-6, help="learning rate")
 parser.add_argument("--optim", type=str, default="adam", help="optimizer")
@@ -147,6 +147,7 @@ def main():
         {
             "vocab": len_vocab,
             "num_components": args.num_components,
+            "prior_mean": args.prior_mean,
         },
     )
 
@@ -213,6 +214,7 @@ def main():
             f"Epoch {epoch} finished in {epoch_timer.minutes_elapsed():.2f} minutes."
         )
 
+
 def make_dump_path():
     if args.DEBUG is True:
         # For testing, create one folder for data
@@ -222,6 +224,7 @@ def make_dump_path():
 
     os.makedirs(args.dump_path)
 
+
 def set_up_logging():
     logging.basicConfig(
         filename=os.path.join(args.dump_path, "output.log"),
@@ -229,6 +232,7 @@ def set_up_logging():
         level=args.log_level,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
+
 
 def save_model(model, path, filename):
     torch.save(model.state_dict(), os.path.join(path, filename))

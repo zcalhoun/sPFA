@@ -103,8 +103,8 @@ def create_dataset(
 
     logging.info("Returning the datasets.")
     # Create the tweet datasets and return them
-    train_dataset = TweetDataset(target_train_path, train_aqi)
-    test_dataset = TweetDataset(target_test_path, test_aqi)
+    train_dataset = TweetDataset(target_train_path, train_aqi, ks=ks, sigma=sigma)
+    test_dataset = TweetDataset(target_test_path, test_aqi, ks=ks, sigma=sigma)
 
     # Save the count vector for future analysis
     joblib.dump(cv, os.path.join(dump_path, "cv.joblib"))

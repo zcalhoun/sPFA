@@ -18,6 +18,6 @@ def load(
         min_df,
         max_df,
         dump_path,
-        ks=ks,
-        sigma=sigma,
+        ks,
+        sigma,
     )

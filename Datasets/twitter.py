@@ -26,8 +26,8 @@ def create_dataset(
     min_df,
     max_df,
     dump_path,
-    ks=20,
-    sigma=5,
+    ks,
+    sigma,
 ):
 
     # Create path to load data

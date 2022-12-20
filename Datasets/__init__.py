@@ -10,6 +10,7 @@ def load(
     max_df=0.8,
     ks=20,
     sigma=5,
+    use_lds=False,
 ):
     return create_dataset(
         data_path,
@@ -20,4 +21,5 @@ def load(
         dump_path,
         ks,
         sigma,
+        use_lds,
     )

@@ -28,6 +28,7 @@ def create_dataset(
     dump_path,
     ks,
     sigma,
+    use_lds=False,
 ):
 
     # Create path to load data
@@ -48,8 +49,8 @@ def create_dataset(
         test_aqi = build_aqi(target_test_path)
 
         # Create the dataset object
-        train_dataset = TweetDataset(target_train_path, train_aqi, ks, sigma)
-        test_dataset = TweetDataset(target_test_path, test_aqi, ks, sigma)
+        train_dataset = TweetDataset(target_train_path, train_aqi, use_lds, ks, sigma)
+        test_dataset = TweetDataset(target_test_path, test_aqi, use_lds, ks, sigma)
 
         # Load the count vectorizer, too.
         cv = joblib.load(os.path.join(dump_path, "cv.joblib"))
@@ -103,8 +104,10 @@ def create_dataset(
 
     logging.info("Returning the datasets.")
     # Create the tweet datasets and return them
-    train_dataset = TweetDataset(target_train_path, train_aqi, ks=ks, sigma=sigma)
-    test_dataset = TweetDataset(target_test_path, test_aqi, ks=ks, sigma=sigma)
+    train_dataset = TweetDataset(
+        target_train_path, train_aqi, use_lds, ks=ks, sigma=sigma
+    )
+    test_dataset = TweetDataset(target_test_path, test_aqi, use_lds, ks=ks, sigma=sigma)
 
     # Save the count vector for future analysis
     joblib.dump(cv, os.path.join(dump_path, "cv.joblib"))
@@ -213,13 +216,14 @@ def load_sample(args):
 
 
 class TweetDataset(Dataset):
-    def __init__(self, data_path, aqi, ks, sigma):
+    def __init__(self, data_path, aqi, use_lds, ks, sigma):
         # Init
         super(TweetDataset, self).__init__()
         self.files = os.listdir(data_path)
         self.data_path = data_path
         print(f"ks {ks}, sigma {sigma}")
         self.LDS = LDSWeights(aqi, ks, sigma)
+        self.use_lds = use_lds
 
     def __len__(self):
         return len(self.files)
@@ -229,10 +233,15 @@ class TweetDataset(Dataset):
         with open(os.path.join(self.data_path, self.files[index])) as f:
             data = json.load(f)
 
+        if self.use_lds:
+            w = self.LDS[data["aqi"]]
+        else:
+            w = 1
+
         return (
             torch.tensor(data["sample"], dtype=torch.float),
             torch.tensor([data["aqi"]], dtype=torch.float),
-            torch.tensor([self.LDS[data["aqi"]]], dtype=torch.float),
+            torch.tensor([w], dtype=torch.float),
         )
 
 

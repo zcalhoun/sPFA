@@ -24,8 +24,10 @@ def create_dataset(
 ):
 
     # Create path to load data
-    dump_str = [str(w) for w in [tweets_per_sample, num_samples_per_day, min_df, max_df]]
-    
+    dump_str = [
+        str(w) for w in [tweets_per_sample, num_samples_per_day, min_df, max_df]
+    ]
+
     dump_path = os.path.join(dump_path, *dump_str)
 
     target_train_path = os.path.join(dump_path, "train")
@@ -45,6 +47,10 @@ def create_dataset(
         # Load the count vectorizer, too.
         cv = joblib.load(os.path.join(dump_path, "cv.joblib"))
         return train_dataset, test_dataset
+
+    logging.info(
+        f"Creating the datasets at {target_train_path} and {target_test_path}."
+    )
 
     files = os.listdir(data_path)
 

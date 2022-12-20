@@ -5,7 +5,6 @@ Zach Calhoun (zachary.calhoun@duke.edu)
 import os
 import argparse
 import logging
-import numpy as np
 
 # Torch packages
 import torch
@@ -21,8 +20,6 @@ from src.utils import (
 
 import Datasets
 import Models
-
-import pdb
 
 
 # Set up arguments

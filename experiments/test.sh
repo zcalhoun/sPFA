@@ -7,4 +7,5 @@ python main_2.py \
     --dump_path ~/Desktop/twitter/sPFA/results/ \
     --data_dump_path ~/Desktop/twitter/sPFA/results/ \
     --model base \
+    --prior_mean -1 \
     --DEBUG true \

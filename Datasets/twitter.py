@@ -20,7 +20,14 @@ from scipy.ndimage import gaussian_filter1d
 
 
 def create_dataset(
-    data_path, num_samples_per_day, tweets_per_sample, min_df, max_df, dump_path
+    data_path,
+    num_samples_per_day,
+    tweets_per_sample,
+    min_df,
+    max_df,
+    dump_path,
+    ks=20,
+    sigma=5,
 ):
 
     # Create path to load data
@@ -206,12 +213,12 @@ def load_sample(args):
 
 
 class TweetDataset(Dataset):
-    def __init__(self, data_path, aqi):
+    def __init__(self, data_path, aqi, ks=20, sigma=5):
         # Init
         super(TweetDataset, self).__init__()
         self.files = os.listdir(data_path)
         self.data_path = data_path
-        self.LDS = LDSWeights(aqi)
+        self.LDS = LDSWeights(aqi, ks, sigma)
 
     def __len__(self):
         return len(self.files)
@@ -229,10 +236,10 @@ class TweetDataset(Dataset):
 
 
 class LDSWeights:
-    def __init__(self, data):
-        self.weights = self._generate_weights(data)
+    def __init__(self, data, ks=20, sigma=5):
+        self.weights = self._generate_weights(data, ks, sigma)
 
-    def _generate_weights(self, data):
+    def _generate_weights(self, data, ks, sigma):
 
         # Reduce to bins of size 5.
         all_aqi = [day // 5 for day in data]
@@ -244,7 +251,7 @@ class LDSWeights:
 
         # lds_kernel_window: [ks,], here for example, we use gaussian, ks=5, sigma=2
         lds_kernel_window = self._get_lds_kernel_window(
-            kernel="gaussian", ks=20, sigma=5
+            kernel="gaussian", ks=ks, sigma=sigma
         )
         # calculate effective label distribution: [Nb,]
         eff_label_dist = convolve1d(

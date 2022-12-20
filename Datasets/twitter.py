@@ -218,6 +218,7 @@ class TweetDataset(Dataset):
         super(TweetDataset, self).__init__()
         self.files = os.listdir(data_path)
         self.data_path = data_path
+        print(f"ks {ks}, sigma {sigma}")
         self.LDS = LDSWeights(aqi, ks, sigma)
 
     def __len__(self):

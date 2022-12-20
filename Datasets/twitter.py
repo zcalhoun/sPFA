@@ -48,8 +48,8 @@ def create_dataset(
         test_aqi = build_aqi(target_test_path)
 
         # Create the dataset object
-        train_dataset = TweetDataset(target_train_path, train_aqi)
-        test_dataset = TweetDataset(target_test_path, test_aqi)
+        train_dataset = TweetDataset(target_train_path, train_aqi, ks, sigma)
+        test_dataset = TweetDataset(target_test_path, test_aqi, ks, sigma)
 
         # Load the count vectorizer, too.
         cv = joblib.load(os.path.join(dump_path, "cv.joblib"))
@@ -213,7 +213,7 @@ def load_sample(args):
 
 
 class TweetDataset(Dataset):
-    def __init__(self, data_path, aqi, ks=20, sigma=5):
+    def __init__(self, data_path, aqi, ks, sigma):
         # Init
         super(TweetDataset, self).__init__()
         self.files = os.listdir(data_path)
@@ -237,7 +237,7 @@ class TweetDataset(Dataset):
 
 
 class LDSWeights:
-    def __init__(self, data, ks=20, sigma=5):
+    def __init__(self, data, ks, sigma):
         self.weights = self._generate_weights(data, ks, sigma)
 
     def _generate_weights(self, data, ks, sigma):

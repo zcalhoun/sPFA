@@ -31,7 +31,6 @@ class PerformanceMonitor:
             "pnll",
             "mse",
             "kld",
-            "l1",
             "time",
             "kld_weight",
         ]
@@ -52,7 +51,6 @@ class PerformanceMonitor:
                         str(scores["pnll"]),
                         str(scores["mse"]),
                         str(scores["kld"]),
-                        str(scores["l1"]),
                         str(minutes),
                         str(kld_weight),
                     ]
@@ -112,7 +110,9 @@ class DataHandler:
             self.train_data = None
             self.test_data = None
 
-    def _data_exists(self,):
+    def _data_exists(
+        self,
+    ):
         """
         This function checks if the data exists in the storage path.
         """
@@ -122,7 +122,9 @@ class DataHandler:
             map(lambda x: os.path.exists(os.path.join(self.storage_path, x)), files)
         )
 
-    def get_train_data(self,):
+    def get_train_data(
+        self,
+    ):
 
         if self.train_data is not None:
             return self.train_data
@@ -155,7 +157,9 @@ class DataHandler:
         # Turn the training data into a joblib file
         return self._count_vectorize_and_save(train_data_json, "train_data.joblib")
 
-    def get_test_data(self,):
+    def get_test_data(
+        self,
+    ):
         if self.test_data is not None:
             return self.test_data
 
@@ -169,11 +173,15 @@ class DataHandler:
         logging.info("Test data loaded and being count vectorized.")
         return self._count_vectorize_and_save(test_data_json, "test_data.joblib")
 
-    def get_count_vec(self,):
+    def get_count_vec(
+        self,
+    ):
         return self.count_vectorizer
 
     def _count_vectorize_and_save(
-        self, data, filename,
+        self,
+        data,
+        filename,
     ):
         """
         This function takes in a data set and vectorizes it.

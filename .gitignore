@@ -4,3 +4,4 @@ data/*
 slurm*
 checkpoints/
 notebooks/
+.DS_Store

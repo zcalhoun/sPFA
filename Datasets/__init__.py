@@ -8,7 +8,18 @@ def load(
     tweets_per_sample=1000,
     min_df=0.05,
     max_df=0.8,
+    ks=20,
+    sigma=5,
+    use_lds=False,
 ):
     return create_dataset(
-        data_path, num_samples_per_day, tweets_per_sample, min_df, max_df, dump_path
+        data_path,
+        num_samples_per_day,
+        tweets_per_sample,
+        min_df,
+        max_df,
+        dump_path,
+        ks,
+        sigma,
+        use_lds,
     )

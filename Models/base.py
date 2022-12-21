@@ -36,6 +36,9 @@ class BaseModel(nn.Module):
 
         self.W_tilde = nn.Parameter(torch.rand(num_components, vocab))
 
+        with torch.no_grad():
+            nn.init.trunc_normal_(self.W_tilde, mean=-2, std=1, a=-2, b=2)
+
         self.pois_nll = nn.PoissonNLLLoss(log_input=False)
         self.softplus = nn.Softplus()
 
@@ -47,6 +50,11 @@ class BaseModel(nn.Module):
             self.device = device
 
         self.to(self.device)
+
+        # Initialize the params
+        with torch.no_grad():
+            nn.init.xavier_uniform_(self.enc_mu.weight)
+            nn.init.xavier_uniform_(self.enc_logvar.weight)
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
@@ -125,6 +133,9 @@ class Beta(nn.Module):
         self.beta = nn.Parameter(torch.rand(topics))
         self.bias = nn.Parameter(torch.Tensor([bias]))
         self.softplus = nn.Softplus()
+
+        with torch.no_grad():
+            nn.init.trunc_normal_(self.beta, mean=-2, std=1, a=-2, b=2)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x @ self.softplus(self.beta) + self.bias

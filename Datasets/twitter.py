@@ -54,7 +54,7 @@ def create_dataset(
 
         # Load the count vectorizer, too.
         cv = joblib.load(os.path.join(dump_path, "cv.joblib"))
-        return train_dataset, test_dataset
+        return train_dataset, test_dataset, cv
 
     logging.info(
         f"Creating the datasets at {target_train_path} and {target_test_path}."
@@ -112,7 +112,7 @@ def create_dataset(
     # Save the count vector for future analysis
     joblib.dump(cv, os.path.join(dump_path, "cv.joblib"))
 
-    return train_dataset, test_dataset
+    return train_dataset, test_dataset, cv
 
 
 def build_aqi(path):
@@ -146,7 +146,7 @@ def save_samples(samples, aqi, path):
     pool = mp.Pool(mp.cpu_count() - 1)
 
     for result in pool.imap_unordered(save_file, data_args):
-        print(result)
+        continue
 
     pool.close()
 
@@ -221,7 +221,6 @@ class TweetDataset(Dataset):
         super(TweetDataset, self).__init__()
         self.files = os.listdir(data_path)
         self.data_path = data_path
-        print(f"ks {ks}, sigma {sigma}")
         self.LDS = LDSWeights(aqi, ks, sigma)
         self.use_lds = use_lds
 

@@ -6,6 +6,7 @@ import numpy as np
 from itertools import repeat
 import multiprocessing as mp
 import joblib
+import warnings
 
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -268,8 +269,13 @@ class LDSWeights:
         )
 
         # Turn the effective label distribution into the probability
-        w = [np.float32(1 / e) for e in eff_label_dist]
-        return w / np.sum(w)
+        # Suppress the warning that we are dividing by zero.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            w = [np.float32(1 / e) for e in eff_label_dist]
+            w = w / np.sum(w)
+
+        return w
 
     def __len__(self):
         return len(self.weights)

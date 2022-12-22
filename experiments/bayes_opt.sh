@@ -10,7 +10,8 @@
 #SBATCH --account=carlsonlab
 
 
-mamba activate bo
+source ~/.bashrc
+conda activate bo
 
 python optimize_model.py \
     --data_path /hpc/group/carlsonlab/zdc6/wildfire/data/lemmatized/ \

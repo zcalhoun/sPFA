@@ -124,7 +124,7 @@ def main():
     # Set up timer to track how long model runs
     logging.info("Loading data...")
     step_timer = Timer()
-    train_data, test_data = Datasets.load(
+    train_data, test_data, cv = Datasets.load(
         args.data_path,
         args.data_dump_path,
         num_samples_per_day=args.num_samples_per_day,
@@ -135,7 +135,7 @@ def main():
     logging.info(f"Data loaded in {step_timer.elapsed():.2f} seconds.")
 
     # Get the vocab length from the first line.
-    len_vocab = len(train_data[0][0])
+    len_vocab = len(cv.vocabulary_)
 
     # Load the model
     logging.info("Creating model")

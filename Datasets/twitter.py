@@ -51,7 +51,7 @@ def create_dataset(
 
         # Create the dataset object
         train_dataset = TweetDataset(target_train_path, train_aqi, use_lds, ks, sigma)
-        test_dataset = TweetDataset(target_test_path, test_aqi, use_lds, ks, sigma)
+        test_dataset = TweetDataset(target_test_path, test_aqi, False, ks, sigma)
 
         # Load the count vectorizer, too.
         cv = joblib.load(os.path.join(dump_path, "cv.joblib"))

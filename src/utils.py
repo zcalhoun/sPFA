@@ -328,17 +328,17 @@ class Timer:
 class KLDScheduler:
     """This class implements a linearly increasing KLD coefficient"""
 
-    def __init__(self, init_kld=1e-6, end_kld=1.0, end_epoch=100):
+    def __init__(self, init_kld=1e-6, end_kld=1.0, n_iters=100):
         self.weight = init_kld
         self.end_kld = end_kld
-        self.step_size = (end_kld - init_kld) / end_epoch
-        self.end_epoch = end_epoch
+        self.step_size = (end_kld - init_kld) / n_iters
+        self.n_iters = n_iters
         self.count = 0
 
     def step(self):
         # If the epoch has finished, just set the
         # weight to the end value.
-        if self.end_epoch < self.count:
+        if self.n_iters < self.count:
             self.weight = self.end_kld
         else:
             # Update the counter and the weight

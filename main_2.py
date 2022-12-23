@@ -61,6 +61,7 @@ parser.add_argument(
 parser.add_argument(
     "--max_df", type=float, default=0.8, help="maximum document frequency"
 )
+parser.add_argument("--use_lds", type=bool, default=False, help="whether to use lds")
 
 
 ######################
@@ -70,8 +71,10 @@ parser.add_argument("--model", type=str, default=None, choices=["base"], require
 parser.add_argument(
     "--num_components", type=int, default=50, help="number of latent topics"
 )
-parser.add_argument("--prior_mean", type=int, default=0, help="prior mean")
-parser.add_argument("--prior_logvar", type=int, default=0, help="prior log variance")
+parser.add_argument("--prior_mean", type=float, default=0.0, help="prior mean")
+parser.add_argument(
+    "--prior_logvar", type=float, default=0.0, help="prior log variance"
+)
 parser.add_argument("--mse_weight", type=float, default=1.0, help="mse weight")
 
 ######################
@@ -82,9 +85,23 @@ parser.add_argument("--batch_size", type=int, default=1, help="batch size")
 parser.add_argument("--init_kld", type=float, default=0.0, help="initial KLD value")
 parser.add_argument("--end_kld", type=float, default=1.0, help="end KLD value")
 parser.add_argument(
-    "--klds_epochs", type=int, default=10, help="number of epochs to scale KLD"
+    "--klds_epochs", type=int, default=100, help="number of epochs to scale KLD"
 )
 parser.add_argument("--lr", type=float, default=1e-6, help="learning rate")
+parser.add_argument(
+    "--b1",
+    type=float,
+    default=0.9,
+    help="adam: decay of first order momentum of gradient",
+)
+parser.add_argument(
+    "--b2",
+    type=float,
+    default=0.999,
+    help="adam: decay of first order momentum of gradient",
+)
+parser.add_argument("--wd", type=float, default=0.0, help="weight decay")
+
 parser.add_argument("--optim", type=str, default="adam", help="optimizer")
 ######################
 # Logging args
@@ -131,6 +148,7 @@ def main():
         tweets_per_sample=args.tweets_per_sample,
         min_df=args.min_df,
         max_df=args.max_df,
+        use_lds=args.use_lds,
     )
     logging.info(f"Data loaded in {step_timer.elapsed():.2f} seconds.")
 
@@ -148,16 +166,18 @@ def main():
         },
     )
 
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.AdamW(
+        model.parameters(), lr=args.lr, weight_decay=args.wd, betas=(args.b1, args.b2)
+    )
 
     # Ramp up beta value from 0 to 1 over the course of args.klds_epochs
     klds = KLDScheduler(
-        init_kld=args.init_kld, end_kld=args.end_kld, end_epoch=args.klds_epochs
+        init_kld=args.init_kld, end_kld=args.end_kld, n_iters=args.klds_epochs
     )
 
     # Create the training data loaders
     train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
-    test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
+    test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False)
 
     logging.info("Beginning training...")
     best_test_loss = float("inf")
@@ -187,7 +207,7 @@ def main():
 
         # Test the model
         epoch_timer.reset()
-        test_score = test(model, test_loader, klds.weight)
+        test_score = test(model, test_loader, klds.weight, args.mse_weight)
         monitor.log(
             "test",
             epoch,
@@ -238,7 +258,7 @@ def save_model(model, path, filename):
 
 
 @torch.no_grad()
-def test(model, test_loader, beta):
+def test(model, test_loader, beta, mse_weight):
 
     model.eval()
 
@@ -256,7 +276,7 @@ def test(model, test_loader, beta):
 
         pnll, kld, mse = model.compute_loss(X, recon, y, y_hat, mu, logvar, w)
 
-        loss = pnll + mse + beta * kld
+        loss = pnll + mse_weight * mse + beta * kld
 
         # Keep track of scores
         losses["loss"].update(loss.item(), X.size(0))

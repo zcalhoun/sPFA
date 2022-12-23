@@ -44,7 +44,6 @@ def create_dataset(
 
     # if path exists
     if os.path.exists(target_train_path) and os.path.exists(target_test_path):
-        logging.info("Loading the data from disk.")
         # Get the list of aqi needed to initialize the dataset.
         train_aqi = build_aqi(target_train_path)
         test_aqi = build_aqi(target_test_path)

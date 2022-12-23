@@ -19,6 +19,7 @@ def main():
     if os.path.exists(script_args.dump_path):
         set_up_logging()
         logging.info("Loading from checkpoint.")
+        logging.info(script_args)
         # load ax model
         ax_client = AxClient.load_from_json_file(
             script_args.dump_path + "ax_client.json"
@@ -171,6 +172,7 @@ def create_dataloaders(parameterization):
         tweets_per_sample=parameterization["tweets_per_sample"],
         min_df=parameterization["min_df"],
         max_df=parameterization["max_df"],
+        use_lds=script_args.use_lds,
     )
 
     len_vocab = len(cv.vocabulary_)
@@ -285,6 +287,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save_every", type=int, default=10, help="Save results every n iterations"
     )
+
+    parser.add_argument("--use_lds", type=bool, default=False, help="Use LDS or not")
 
     # Make global for ease of use.
     global script_args

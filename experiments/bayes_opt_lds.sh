@@ -17,4 +17,5 @@ python optimize_model.py \
     --data_path /hpc/group/carlsonlab/zdc6/wildfire/data/lemmatized/ \
     --dump_path /work/zdc6/wildfire/results/bo_lds/ \
     --data_dump_path /work/zdc6/wildfire/data/ \
-    --save_every 1
+    --save_every 1 \
+    --use_lds true

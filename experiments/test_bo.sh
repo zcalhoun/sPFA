@@ -7,4 +7,4 @@ python optimize_model.py \
     --dump_path ~/Desktop/twitter/sPFA/results/debug \
     --data_dump_path ~/Desktop/twitter/sPFA/results/ \
     --save_every 1 \
-    --use_lds True
+    --use_lds true

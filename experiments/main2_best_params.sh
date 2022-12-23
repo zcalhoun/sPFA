@@ -2,8 +2,8 @@
 
 #SBATCH --mail-user=zachary.calhoun@duke.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --output=./main2.out
-#SBATCH --error=./main2.err
+#SBATCH --output=./main2_best_params.out
+#SBATCH --error=./main2_best_params.err
 #SBATCH -p carlsonlab-gpu
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G

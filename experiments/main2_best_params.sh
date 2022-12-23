@@ -28,5 +28,5 @@ python main_2.py \
     --b1 0.731666 \
     --b2 0.712416 \
     --wd 0.000216 \
-    --use_lds true
+    --use_lds false
     

@@ -65,6 +65,8 @@ def main():
             logging.info(f"Best trial found at iteration {trial_index}.")
             logging.info(f'Best MSE: {metrics["mse"][0]}')
             logging.info(f'Best PNLL: {metrics["pnll"][0]}')
+            best_mse = metrics["mse"][0]
+            best_pnll = metrics["pnll"][0]
 
         ax_client.complete_trial(trial_index=trial_index, raw_data=metrics)
 

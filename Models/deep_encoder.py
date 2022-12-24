@@ -21,6 +21,7 @@ class DeepEncoder(BaseModel):
         "beta",
         "device",
         "fc1",
+        "batchnorm",
     ]
 
     def __init__(
@@ -43,6 +44,7 @@ class DeepEncoder(BaseModel):
         )
         self.hidden_size = hidden_size
         self.fc1 = nn.Linear(self.vocab, self.hidden_size, bias=True)
+        self.batchnorm = nn.BatchNorm1d(self.hidden_size)
 
         self.enc_mu = nn.Linear(hidden_size, self.num_components, bias=True)
         self.enc_logvar = nn.Linear(hidden_size, self.num_components, bias=True)
@@ -56,6 +58,7 @@ class DeepEncoder(BaseModel):
     # Redefine the encoder
     def encode(self, x):
         x = self.softplus(self.fc1(x))
+        x = self.batchnorm(x)
         mu = self.enc_mu(x)
         logvar = self.enc_logvar(x)
         return mu, logvar

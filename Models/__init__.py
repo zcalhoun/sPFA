@@ -7,3 +7,9 @@ def load(name, kwargs):
         from .vae_vamp import VAEVamp
 
         return VAEVamp(**kwargs)
+    elif name == "deep_encoder":
+        from .deep_encoder import DeepEncoder
+
+        return DeepEncoder(**kwargs)
+    else:
+        raise NotImplementedError("Unknown model name: {}".format(name))

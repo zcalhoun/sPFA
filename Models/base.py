@@ -5,6 +5,7 @@ from torch.nn import functional as F
 
 class BaseModel(nn.Module):
     __slots__ = [
+        "vocab",
         "num_components",
         "prior_mean",
         "prior_logvar",
@@ -27,6 +28,7 @@ class BaseModel(nn.Module):
         device="auto",
     ):
         super(BaseModel, self).__init__()
+        self.vocab = vocab
         self.num_components = num_components
         self.prior_mean = torch.tensor(prior_mean)
         self.prior_logvar = torch.tensor(prior_logvar)
@@ -62,7 +64,6 @@ class BaseModel(nn.Module):
         return eps.mul(std).add_(mu)
 
     def encode(self, x):
-        x = self.softplus(x)
         mu = self.enc_mu(x)
         logvar = self.enc_logvar(x)
         return mu, logvar

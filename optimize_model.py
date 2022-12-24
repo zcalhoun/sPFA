@@ -76,77 +76,90 @@ def main():
 
 
 def set_up_experiment(ax_client):
+
+    parameters = [
+        {
+            "name": "lr",
+            "type": "range",
+            "bounds": [1e-5, 1e-2],
+            "log_scale": True,
+        },
+        {
+            "name": "wd",
+            "type": "range",
+            "bounds": [1e-6, 1e-2],
+            "log_scale": True,
+        },
+        {"name": "batch_size", "type": "fixed", "value": 256},
+        {
+            "name": "end_kld",
+            "type": "range",
+            "bounds": [1e-4, 1e2],
+            "log_scale": True,
+        },
+        {
+            "name": "mse_weight",
+            "type": "range",
+            "bounds": [1e-4, 1e2],
+            "log_scale": True,
+        },
+        {
+            "name": "b1",
+            "type": "range",
+            "bounds": [0.1, 0.999],
+            "value_type": "float",
+        },
+        {
+            "name": "b2",
+            "type": "range",
+            "bounds": [0.1, 0.999],
+            "value_type": "float",
+        },
+        {
+            "name": "tweets_per_sample",
+            "type": "choice",
+            "is_ordered": True,
+            "values": [1000, 2000, 3000],
+        },
+        {
+            "name": "num_samples_per_day",
+            "type": "choice",
+            "is_ordered": True,
+            "values": [1, 2, 3, 4, 5],
+        },
+        {"name": "min_df", "type": "fixed", "value": 0.05},
+        {
+            "name": "max_df",
+            "type": "fixed",
+            "value": 0.8,
+        },
+        {
+            "name": "num_components",
+            "type": "range",
+            "bounds": [10, 1000],
+            "value_type": "int",
+        },
+        {
+            "name": "prior_mean",
+            "type": "range",
+            "bounds": [-10, 1],
+            "value_type": "float",
+        },
+    ]
+
+    if script_args.model == "deep_encoder":
+        parameters.append(
+            {
+                "name": "hidden_size",
+                "type": "range",
+                "bounds": [1000, 10000],
+                "value_type": "int",
+            }
+        )
+
     ax_client.create_experiment(
         name="S-PFA",
-        parameters=[
-            {
-                "name": "lr",
-                "type": "range",
-                "bounds": [1e-5, 1e-2],
-                "log_scale": True,
-            },
-            {
-                "name": "wd",
-                "type": "range",
-                "bounds": [1e-6, 1e-2],
-                "log_scale": True,
-            },
-            {"name": "batch_size", "type": "fixed", "value": 256},
-            {
-                "name": "end_kld",
-                "type": "range",
-                "bounds": [1e-4, 1e2],
-                "log_scale": True,
-            },
-            {
-                "name": "mse_weight",
-                "type": "range",
-                "bounds": [1e-4, 1e2],
-                "log_scale": True,
-            },
-            {
-                "name": "b1",
-                "type": "range",
-                "bounds": [0.1, 0.999],
-                "value_type": "float",
-            },
-            {
-                "name": "b2",
-                "type": "range",
-                "bounds": [0.1, 0.999],
-                "value_type": "float",
-            },
-            {
-                "name": "tweets_per_sample",
-                "type": "choice",
-                "is_ordered": True,
-                "values": [1000, 2000, 3000],
-            },
-            {
-                "name": "num_samples_per_day",
-                "type": "choice",
-                "is_ordered": True,
-                "values": [1, 2, 3, 4, 5],
-            },
-            {"name": "min_df", "type": "fixed", "value": 0.05},
-            {
-                "name": "max_df",
-                "type": "fixed",
-                "value": 0.8,
-            },
-            {
-                "name": "num_components",
-                "type": "range",
-                "bounds": [10, 1000],
-                "value_type": "int",
-            },
-            {
-                "name": "prior_mean",
-                "type": "range",
-                "bounds": [-10, 1],
-                "value_type": "float",
-            },
-        ],
+        parameters=parameters,
         objectives={
             "pnll": ObjectiveProperties(minimize=True),
             "mse": ObjectiveProperties(minimize=True),
@@ -249,7 +262,11 @@ def train_evaluate(parameterization):
         "prior_mean": parameterization["prior_mean"],
         "device": DEVICE,
     }
-    model = Models.load("base", model_args)
+
+    if script_args.model == "deep_encoder":
+        model_args["hidden_size"] = parameterization["hidden_size"]
+
+    model = Models.load(script_args.model, model_args)
 
     train(
         model,
@@ -267,6 +284,10 @@ def train_evaluate(parameterization):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--model", type=str, required=True, default="base", help="Model to use"
+    )
 
     parser.add_argument(
         "--data_path", type=str, required=True, help="Path to the lemmatized data"

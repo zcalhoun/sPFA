@@ -3,8 +3,6 @@ from .base import BaseModel
 import torch
 from torch import nn
 
-import pdb
-
 
 class DeepEncoder(BaseModel):
     __slots__ = [

@@ -2,7 +2,6 @@
 logic to handle the aqi as an ordinal variable. In this setting, the aqi is 
 turned into the AQI levels of 1-5"""
 
-
 import os
 import re
 import logging
@@ -12,6 +11,7 @@ from itertools import repeat
 import multiprocessing as mp
 import joblib
 import warnings
+import argparse
 
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -112,7 +112,6 @@ def create_dataset(
 def resample_files(data_path, files, total_samples):
     """This script should resample the total files to the total samples based on the
     inverse number of samples per AQI bin"""
-    binned = [0, 0, 0, 0]
 
     all_aqi = []
     pool = mp.Pool(mp.cpu_count() - 1)
@@ -124,28 +123,22 @@ def resample_files(data_path, files, total_samples):
 
     # Create bin counts
     binned_files = [[], [], [], []]
+
     for aqi, file in zip(all_aqi, files):
         if aqi < 50:
-            binned[0] += 1
             binned_files[0].append(file)
             continue
         elif aqi < 100:
-            binned[1] += 1
             binned_files[1].append(file)
             continue
         elif aqi < 150:
-            binned[2] += 1
             binned_files[2].append(file)
             continue
         else:
-            binned[3] += 1
             binned_files[3].append(file)
 
-    binned = np.array(binned)
-    weights = (1 / binned) / (1 / binned).sum()
-
     # Categories the files by their weights
-    sample_counts = np.random.multinomial(total_samples, weights)
+    sample_counts = np.random.multinomial(total_samples, [1 / 4] * 4)
 
     # Select the sample counts from each of the binned_files
     resampled_files = []
@@ -180,7 +173,7 @@ def read_aqi(args):
         data = json.load(f)
 
     # Return the aqi
-    return data["aqi"]
+    return data["AQI"]
 
 
 def save_samples(samples, aqi, path):
@@ -279,3 +272,27 @@ class TweetDataset(Dataset):
             torch.tensor(data["sample"], dtype=torch.float),
             torch.tensor([data["aqi"]], dtype=torch.float),
         )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--data_path",
+        type=str,
+    )
+    parser.add_argument("--dump_path", type=str)
+    parser.add_argument("--total_samples", type=int, default=1000)
+    parser.add_argument("--tweets_per_sample", type=int, default=1)
+
+    args = parser.parse_args()
+
+    # Create the dataset
+    create_dataset(
+        args.data_path,
+        args.total_samples,
+        args.tweets_per_sample,
+        0.05,
+        0.8,
+        args.dump_path,
+    )
